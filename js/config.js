@@ -1,6 +1,7 @@
 /* Block of the Dead — constantes y valores de equilibrio.
-   Cambia aquí la dificultad sin tocar la lógica. */
-window.BOTD = window.BOTD || {};
+   Cambia aquí la dificultad sin tocar la lógica.
+   Usa `self` (y no `window`) para que también lo pueda cargar el service worker (sw.js). */
+self.BOTD = self.BOTD || {};
 
 BOTD.CONFIG = {
   COLS: 16,          // columnas del campo (sin contar la casa)
@@ -99,7 +100,7 @@ BOTD.CONFIG = {
 };
 
 // Versión del juego (se muestra en el menú y se usa en las copias exportadas)
-BOTD.VERSION = '1.3.0';
+BOTD.VERSION = '1.4.0';
 
 // Estado de calidad en tiempo de ejecución (lo cambia main.js si el equipo va lento o según los ajustes)
 BOTD.Quality = { low: false };
