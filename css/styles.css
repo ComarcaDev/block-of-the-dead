@@ -321,7 +321,10 @@ button { font-family: var(--text); font-weight: 700; color: var(--cream); cursor
 }
 
 /* ---------- Controles táctiles ---------- */
-.touch-controls { display: none; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.touch-controls { display: none; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tc-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.touch-swap .tc-move { order: 2; }
+.shop-btn .label-s { display: none; }
 .touch-controls button {
   height: 64px;
   font-size: 24px;
@@ -618,8 +621,23 @@ button { font-family: var(--text); font-weight: 700; color: var(--cream); cursor
   .piece-boxes #next, .piece-boxes #hold { width: 48px; height: 48px; }
   .shop-list .shop-btn { min-width: 0; overflow: hidden; }
   .shop-btn .label { font-size: 9px; line-height: 1.1; overflow-wrap: break-word; hyphens: auto; }
-  .touch-controls { gap: 5px; }
-  .touch-controls button { font-size: 20px; }
+  .touch-controls { gap: 10px; }
+  .tc-group { gap: 5px; }
+}
+
+/* ---------- Móvil en vertical ---------- */
+@media (max-width: 860px) and (orientation: portrait) {
+  #app { gap: 6px; padding: 6px 6px max(6px, env(safe-area-inset-bottom)); }
+  #panel { gap: 5px; padding: 6px; }
+  .stat { padding: 3px 6px; }
+  .stat b { font-size: 14px; }
+  /* Tienda con nombres cortos */
+  .shop-btn .label { display: none; }
+  .shop-btn .label-s { display: block; font-size: 11px; font-weight: 700; }
+  .shop-btn { padding: 3px 2px; gap: 1px; }
+  /* Botones táctiles grandes */
+  .touch-controls button { height: 68px; font-size: 26px; border-radius: 18px; }
+  #stage { align-items: center; }
 }
 
 /* ---------- Versión ---------- */
@@ -676,6 +694,27 @@ button { font-family: var(--text); font-weight: 700; color: var(--cream); cursor
 .set-msg { min-height: 1.2em; margin: 6px 0 0; font-size: 14px; }
 .set-msg.ok { color: #b8ff8f; }
 .set-msg.bad { color: #ffb0b0; }
+
+/* ---------- App instalable ---------- */
+.install-btn[hidden], .update-bar[hidden] { display: none; }
+.update-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 14px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  max-width: calc(100% - 24px);
+  font-size: 15px;
+  color: var(--ink);
+  background: linear-gradient(180deg, #fff6dc, #ffe27a);
+  border: 4px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 0 6px 0 rgba(0, 0, 0, .35);
+  transform: translateX(-50%);
+}
 
 /* ---------- Teclas ---------- */
 .keys-list { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }

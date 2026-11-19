@@ -10,7 +10,8 @@ BOTD.Render = (() => {
   const OX = CELL;                                   // la casa ocupa la primera columna
   const SKY = 0.6;                                   // celdas de cielo visibles
   const VIEW_TOP = (C.HIDDEN_ROWS - SKY) * CELL;     // y lógica del borde superior visible
-  const LW = (C.COLS + 1) * CELL;                    // ancho lógico del lienzo
+  let LW = (C.COLS + 1) * CELL;                      // ancho lógico del lienzo (menor con la vista ampliada)
+  let cropCols = 0;                                  // columnas de la zona de zombies que no se muestran
   const LH = (C.ROWS + SKY) * CELL;                  // alto lógico del lienzo
   const FONT = '"Lilita One", "Fredoka", "Arial Rounded MT Bold", "Trebuchet MS", sans-serif';
   const INK = '#2b1a0e';
@@ -978,5 +979,18 @@ BOTD.Render = (() => {
     };
   }
 
-  return { LW, LH, init, resize, draw, drawIdle, drawPreview, drawIcon, worldToClient };
+  // Vista ampliada: oculta las últimas `n` columnas de la zona de aparición (los zombies entran por el borde)
+  function setCrop(n) {
+    n = Math.max(0, Math.min(C.COLS - C.BUILD_COLS - 1, Math.round(n || 0)));
+    if (n === cropCols) return false;
+    cropCols = n;
+    LW = (C.COLS + 1 - n) * CELL;
+    bgCache = {};
+    return true;
+  }
+
+  return {
+    get LW() { return LW; }, LH, get cropCols() { return cropCols; },
+    init, resize, draw, drawIdle, drawPreview, drawIcon, worldToClient, setCrop
+  };
 })();

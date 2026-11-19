@@ -22,6 +22,13 @@
   UI.showScreen('menu');
   BOTD.Assets.load().then(() => UI.setReady(S.data, L.count));
 
+  // App instalable: botón "Instalar", aviso de versión nueva y listo sin conexión
+  const PWA = BOTD.PWA;
+  PWA.on('installable', can => document.querySelectorAll('.install-btn').forEach(b => { b.hidden = !can; }));
+  PWA.on('update', () => { document.getElementById('update-bar').hidden = false; });
+  PWA.on('offlineReady', () => UI.toast('📲', BOTD.t('offline_ready')));
+  PWA.register();
+
   function toggleFullscreen() {
     const d = document;
     const el = d.documentElement;
@@ -411,6 +418,12 @@
           if (r.movedFrom) UI.setKeysMsg(BOTD.t('key_moved', { k: Input.keyLabel(code), a: BOTD.t('act_' + r.movedFrom) }));
         });
         break;
+      case 'install': PWA.promptInstall(); break;
+      case 'apply-update':
+        S.save();
+        document.getElementById('update-bar').hidden = true;
+        PWA.applyUpdate();
+        break;
       case 'keys-reset':
         S.data.settings.keys = {};
         Input.setBindings(null);
@@ -490,6 +503,7 @@
   const stage = document.getElementById('stage');
   // El lienzo se dibuja a la resolución real de la pantalla (devicePixelRatio) para verse nítido
   const P = C.PERF;
+  const portraitQuery = window.matchMedia('(max-width: 860px) and (orientation: portrait)');
   const isMobile = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
   let lastFit = '';
   function fit() {
@@ -526,6 +540,9 @@
     document.body.classList.toggle('big-text', !!s.bigText);
     document.body.classList.toggle('reduce-motion', BOTD.Prefs.reduceMotion);
     if (game) UI.resetHud();   // redibujar las vistas previas (símbolos del modo daltónico)
+    // Móvil: lado de los botones táctiles y vista ampliada en vertical
+    document.getElementById('touch').classList.toggle('touch-swap', s.touchLayout === 'swap');
+    if (R.setCrop(s.zoomView && portraitQuery.matches ? 3 : 0)) lastFit = '';
     const low = s.quality === 'low';
     if (s.quality !== 'auto' || low) {
       if (BOTD.Quality.low !== low) { BOTD.Quality.low = low; lastFit = ''; }
@@ -538,6 +555,8 @@
   }
   let autoLowered = false;   // true si la calidad automática ya bajó la calidad en esta sesión
   applySettings();
+  // Al girar el móvil se recalcula la vista ampliada
+  if (portraitQuery.addEventListener) portraitQuery.addEventListener('change', applySettings);
 
   // Calidad automática: si el equipo va lento de forma sostenida, se baja la calidad una vez
   let frameAvg = 16.7, slowTime = 0;

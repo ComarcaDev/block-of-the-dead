@@ -4,6 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Block of the Dead</title>
+  <meta name="description" content="Las piezas que caen se convierten en defensas contra hordas de zombies.">
+  <meta name="theme-color" content="#2d6a17">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Block Dead">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/icons/icon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Lilita+One&display=swap" rel="stylesheet">
@@ -23,12 +33,16 @@
         </div>
       </div>
       <div id="touch" class="touch-controls">
-        <button data-action="left" data-i18n-aria="aria_left">◀</button>
-        <button data-action="rotate" data-i18n-aria="aria_rotate">⟳</button>
-        <button data-action="right" data-i18n-aria="aria_right">▶</button>
-        <button data-action="down" data-i18n-aria="aria_down">▼</button>
-        <button data-action="drop" data-i18n-aria="aria_drop">⤓</button>
-        <button data-action="hold" data-i18n-aria="aria_hold">⇄</button>
+        <div class="tc-group tc-move">
+          <button data-action="left" data-i18n-aria="aria_left">◀</button>
+          <button data-action="down" data-i18n-aria="aria_down">▼</button>
+          <button data-action="right" data-i18n-aria="aria_right">▶</button>
+        </div>
+        <div class="tc-group tc-act">
+          <button data-action="hold" data-i18n-aria="aria_hold">⇄</button>
+          <button data-action="rotate" data-i18n-aria="aria_rotate">⟳</button>
+          <button data-action="drop" data-i18n-aria="aria_drop">⤓</button>
+        </div>
       </div>
     </main>
 
@@ -54,9 +68,9 @@
       <div class="shop">
         <h2 data-i18n="shop_title"></h2>
         <div class="shop-list">
-          <button class="shop-btn" data-shop="choose"><span class="key">1</span><span class="label" data-i18n="shop_choose"></span><span class="cost"></span></button>
-          <button class="shop-btn" data-shop="single"><span class="key">2</span><span class="label" data-i18n="shop_single"></span><span class="cost"></span></button>
-          <button class="shop-btn" data-shop="bomb"><span class="key">3</span><span class="label" data-i18n="shop_bomb"></span><span class="cost"></span></button>
+          <button class="shop-btn" data-shop="choose"><span class="key">1</span><span class="label" data-i18n="shop_choose"></span><span class="label-s" data-i18n="shop_choose_s"></span><span class="cost"></span></button>
+          <button class="shop-btn" data-shop="single"><span class="key">2</span><span class="label" data-i18n="shop_single"></span><span class="label-s" data-i18n="shop_single_s"></span><span class="cost"></span></button>
+          <button class="shop-btn" data-shop="bomb"><span class="key">3</span><span class="label" data-i18n="shop_bomb"></span><span class="label-s" data-i18n="shop_bomb_s"></span><span class="cost"></span></button>
         </div>
       </div>
       <div class="panel-buttons">
@@ -90,6 +104,7 @@
             <button class="btn" data-cmd="settings" data-i18n="menu_settings"></button>
           </div>
           <button class="btn small fs-btn" data-cmd="fullscreen" data-i18n="fullscreen"></button>
+          <button class="btn small install-btn" data-cmd="install" data-i18n="install_app" hidden></button>
         </div>
         <p class="version" id="version"></p>
       </div>
@@ -151,6 +166,22 @@
             <span data-i18n="set_reduce"></span>
             <input type="checkbox" data-setting="reduceMotion">
           </label>
+
+          <h3 data-i18n="set_mobile"></h3>
+          <div class="set-row">
+            <span data-i18n="set_touch_layout"></span>
+            <div class="seg" data-setting="touchLayout">
+              <button data-value="split" data-i18n="touch_split"></button>
+              <button data-value="swap" data-i18n="touch_swap"></button>
+            </div>
+          </div>
+          <label class="set-row">
+            <span data-i18n="set_zoom_view"></span>
+            <input type="checkbox" data-setting="zoomView">
+          </label>
+          <div class="set-actions">
+            <button class="btn small install-btn" data-cmd="install" data-i18n="install_app" hidden></button>
+          </div>
 
           <h3 data-i18n="set_controls"></h3>
           <p class="set-hint" data-i18n="keys_hint"></p>
@@ -310,6 +341,11 @@
 
   <div id="toasts" class="toasts" aria-live="polite"></div>
 
+  <div id="update-bar" class="update-bar" role="status" hidden>
+    <span data-i18n="update_ready"></span>
+    <button class="btn small primary" data-cmd="apply-update" data-i18n="update_now"></button>
+  </div>
+
   <!-- Scripts clásicos (no módulos) para que funcione abriendo el archivo con doble clic -->
   <script src="js/config.js"></script>
   <script src="js/i18n.js"></script>
@@ -328,6 +364,7 @@
   <script src="js/input.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/tutorial.js"></script>
+  <script src="js/pwa.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

@@ -25,7 +25,9 @@ BOTD.Storage = (() => {
         colorblind: false,                 // símbolos y patrones en las piezas
         bigText: false,                    // interfaz y textos más grandes
         reduceMotion: null,                // null = según el sistema; true/false = elegido
-        keys: {}                           // teclas personalizadas { acción: [códigos] } (vacío = por defecto)
+        keys: {},                          // teclas personalizadas { acción: [códigos] } (vacío = por defecto)
+        touchLayout: 'split',              // 'split' mover a la izquierda | 'swap' mover a la derecha
+        zoomView: false                    // vista ampliada en móvil vertical
       },
       // Reto diario: récord del día, racha de días seguidos y último día jugado
       daily: { date: '', best: 0, streak: 0, bestStreak: 0, last: '' },
@@ -86,6 +88,8 @@ BOTD.Storage = (() => {
       out.settings.colorblind = bool(s.colorblind, false);
       out.settings.bigText = bool(s.bigText, false);
       out.settings.reduceMotion = typeof s.reduceMotion === 'boolean' ? s.reduceMotion : null;
+      out.settings.touchLayout = s.touchLayout === 'swap' ? 'swap' : 'split';
+      out.settings.zoomView = bool(s.zoomView, false);
       if (isObj(s.keys)) {
         for (const a in s.keys) {
           const codes = Array.isArray(s.keys[a]) ? s.keys[a].filter(c => typeof c === 'string' && /^[A-Za-z0-9]{1,24}$/.test(c)).slice(0, 4) : null;
