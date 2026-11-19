@@ -13,7 +13,7 @@ BOTD.Zombies = (() => {
 
   const isBoss = type => !!C.ZOMBIES[type].smashEvery;
 
-  function create(type, lane) {
+  function create(type, lane, rng = Math.random) {
     const d = C.ZOMBIES[type];
     return {
       type, lane,
@@ -22,7 +22,7 @@ BOTD.Zombies = (() => {
       shield: d.shield || 0, maxShield: d.shield || 0,
       underground: !!d.digs, passedBlock: false,
       balloon: !!d.flies,
-      speed: d.speed * (0.9 + Math.random() * 0.2),
+      speed: d.speed * (0.9 + rng() * 0.2),
       biteT: 0, smashT: 0, slow: 0, chill: 0, flash: 0,
       jumped: false, jump: 0, jumpFrom: 0, jumpTo: 0,
       anim: Math.random() * 10, biting: false, dead: false

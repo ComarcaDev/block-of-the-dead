@@ -46,10 +46,11 @@ BOTD.Pieces = (() => {
     return { kind, matrix: SHAPES[kind].map(r => r.slice()), x: 0, y: 0 };
   }
 
-  function makeBag() {
+  // rng: generador aleatorio (con semilla en el reto diario, para que todos reciban las mismas piezas)
+  function makeBag(rng = Math.random) {
     const b = BAG.slice();
     for (let i = b.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(rng() * (i + 1));
       [b[i], b[j]] = [b[j], b[i]];
     }
     return b;

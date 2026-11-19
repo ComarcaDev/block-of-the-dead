@@ -20,11 +20,17 @@ BOTD.Game = (() => {
      - loadout: defensa elegida para cada pieza { I: 'wall', T: 'ice', ... }
      - shopLocked: artículos de la tienda aún bloqueados
      - holdWaves: no empezar las oleadas hasta que se desactive (tutorial)
-     - mods: efectos de las mejoras del cobertizo (BOTD.Progress.mods) */
+     - mods: efectos de las mejoras del cobertizo (BOTD.Progress.mods)
+     - difficulty: 'easy' | 'normal' | 'hard'
+     - dateKey: fecha del reto diario (AAAA-MM-DD) */
   function create(levelIndex, hooks, opts) {
     opts = opts || {};
-    const level = BOTD.Levels.get(levelIndex);
+    const level = BOTD.Levels.get(levelIndex, opts.dateKey);
     const mods = Object.assign({}, BOTD.Progress.NO_MODS, opts.mods || {});
+    // El reto diario es igual para todos: dificultad normal y azar con semilla de la fecha
+    const diffKey = level.daily ? 'normal' : (C.DIFFICULTY[opts.difficulty] ? opts.difficulty : 'normal');
+    const rng = level.daily ? BOTD.Levels.seeded('juego:' + level.dateKey) : Math.random;
+    const allowed = level.onlyDefenses || opts.defenses || ALL_DEFENSES;
     const g = {
       levelIndex, level, hooks: hooks || {},
       grid: B.create(), piece: null, bag: [], next: null, nextBought: false,
@@ -35,18 +41,23 @@ BOTD.Game = (() => {
       shake: 0, houseFlash: 0, time: 0, banner: null,
       over: false, result: null, endTimer: 0, endFired: false,
       firstLane: H - level.lanes, waves: null,
-      allowed: new Set(opts.defenses || ALL_DEFENSES),
-      loadout: Object.assign({}, opts.loadout || {}),
+      allowed: new Set(allowed),
+      loadout: Object.assign({}, level.onlyDefenses
+        ? BOTD.Levels.loadoutFor(opts.loadout, allowed, true) : (opts.loadout || {})),
+      rng, difficulty: diffKey, diff: C.DIFFICULTY[diffKey],
+      brainMul: C.DIFFICULTY[diffKey].brains * (level.brainMul || 1),
+      hold: null, holdUsed: false,
       shopLocked: new Set(opts.shopLocked || []),
       holdWaves: !!opts.holdWaves,
       rollers: new Array(H).fill(false), rolling: [], rollerBonus: 0,
       mods, spareRollers: mods.spareRollers, combo: 0, survival: !!level.endless,
       stats: { moves: 0, rotates: 0, rotateTries: 0, drops: 0, locks: 0, lineClears: 0, buys: 0, rollersUsed: 0,
-        livesLost: 0, maxCombo: 0 }
+        livesLost: 0, maxCombo: 0, holds: 0 }
     };
     g.lives += mods.lives;
     g.brains += mods.startBrains;
-    for (let r = g.firstLane; r < H; r++) g.rollers[r] = true;
+    if (!level.noRollers) for (let r = g.firstLane; r < H; r++) g.rollers[r] = true;
+    else g.spareRollers = 0;
     placeGraves(g, level.graves || 0);
     g.next = pullFromBag(g);
     spawnPiece(g);
@@ -68,8 +79,8 @@ BOTD.Game = (() => {
     let placed = 0, tries = 0;
     const perRow = {};
     while (placed < n && tries++ < 200) {
-      const y = g.firstLane + Math.floor(Math.random() * (H - g.firstLane));
-      const x = 1 + Math.floor(Math.random() * (C.BUILD_COLS - 2));
+      const y = g.firstLane + Math.floor(g.rng() * (H - g.firstLane));
+      const x = 1 + Math.floor(g.rng() * (C.BUILD_COLS - 2));
       if (g.grid[y][x] || (perRow[y] || 0) >= 2) continue;
       g.grid[y][x] = B.makeCell('grave', false, -100 - placed, null);
       perRow[y] = (perRow[y] || 0) + 1;
@@ -83,14 +94,20 @@ BOTD.Game = (() => {
   }
 
   function pullFromBag(g) {
-    if (!g.bag.length) g.bag = P.makeBag();
+    if (!g.bag.length) g.bag = P.makeBag(g.rng);
     return g.bag.pop();
   }
 
+  // Saca la siguiente pieza de la cola
   function spawnPiece(g) {
     const kind = g.next;
     g.next = pullFromBag(g);
     g.nextBought = false;
+    g.holdUsed = false;
+    spawnKind(g, kind);
+  }
+
+  function spawnKind(g, kind) {
     const p = P.create(kind);
     p.x = Math.floor((C.BUILD_COLS - p.matrix.length) / 2);
     p.y = 0;   // nace en las filas ocultas y asoma por arriba del tablero
@@ -99,6 +116,29 @@ BOTD.Game = (() => {
     g.lockResets = 0;
     g.fallTimer = 0;
     if (B.collides(g.grid, p)) { g.piece = null; lose(g, 'top'); }
+  }
+
+  /* ---------- Guardar pieza (hold) ----------
+     Guarda la pieza actual y saca la guardada (o la siguiente si no había). Una vez por pieza. */
+  function hold(g) {
+    const p = g.piece;
+    if (!p || g.over || g.holdUsed) {
+      if (p && g.holdUsed) BOTD.Audio.play('deny');
+      return false;
+    }
+    const current = p.kind;
+    if (g.hold) {
+      const swap = g.hold;
+      g.hold = current;
+      spawnKind(g, swap);
+    } else {
+      g.hold = current;
+      spawnPiece(g);
+    }
+    g.holdUsed = true;
+    g.stats.holds++;
+    BOTD.Audio.play('hold');
+    return true;
   }
 
   /* ---------- Controles de la pieza ---------- */
@@ -166,7 +206,8 @@ BOTD.Game = (() => {
       if (g.lockTimer >= C.LOCK_DELAY) lock(g);
       return;
     }
-    const interval = g.softDrop ? g.level.fall / C.SOFT_DROP_FACTOR : g.level.fall;
+    const fall = g.level.fall * g.diff.fall;
+    const interval = g.softDrop ? fall / C.SOFT_DROP_FACTOR : fall;
     g.fallTimer += dt;
     while (g.fallTimer >= interval) {
       g.fallTimer -= interval;
@@ -381,6 +422,7 @@ BOTD.Game = (() => {
 
   /* ---------- Cerebros y muerte de zombies ---------- */
   function addBrains(g, n, x, y) {
+    n = Math.max(1, Math.round(n * (g.brainMul || 1)));   // dificultad y "lluvia de cerebros"
     g.brains += n;
     addText(g, '+' + n, x, y, '#ff9ecb', 1.2, 'brain');
     if (g.hooks.onBrains) g.hooks.onBrains(n, x, y);
@@ -521,6 +563,6 @@ BOTD.Game = (() => {
   return {
     COLORS, create, update, move, rotate, hardDrop, ghostY, buy, canAfford,
     loseLife, win, burst, addText, setBanner, boom, puff, word, zombieDied,
-    typeOf, triggerRoller, rollerIncoming, ALL_DEFENSES, ROLLER, addBrains
+    typeOf, triggerRoller, rollerIncoming, ALL_DEFENSES, ROLLER, addBrains, hold
   };
 })();

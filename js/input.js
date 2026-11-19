@@ -9,6 +9,7 @@ BOTD.Input = (() => {
     ArrowDown: 'down', KeyS: 'down',
     ArrowUp: 'rotate', KeyW: 'rotate', KeyX: 'rotate',
     KeyZ: 'rotateCCW', KeyQ: 'rotateCCW',
+    KeyC: 'hold', ShiftLeft: 'hold', ShiftRight: 'hold',
     Space: 'drop',
     KeyP: 'pause', Escape: 'pause', KeyF: 'fullscreen',
     Digit1: 'shop1', Digit2: 'shop2', Digit3: 'shop3',
@@ -72,10 +73,15 @@ BOTD.Input = (() => {
         start.moved = true;
       }
       const dy = e.clientY - start.y;
-      if (!start.dropped && dy > step * 2.5 && performance.now() - start.t < 350 && Math.abs(e.clientX - start.x) < step) {
+      const quick = performance.now() - start.t < 350 && Math.abs(e.clientX - start.x) < step;
+      if (!start.dropped && quick && dy > step * 2.5) {
         start.dropped = true;
         start.moved = true;
         emit('drop');
+      } else if (!start.dropped && quick && dy < -step * 2.5) {
+        start.dropped = true;   // deslizar hacia arriba: guardar pieza
+        start.moved = true;
+        emit('hold');
       }
     });
     cv.addEventListener('pointerup', e => {
