@@ -38,6 +38,15 @@ node ci/run-tests.mjs
 - **Reto diario** (botón ★ del menú): cada día hay un nivel nuevo, igual para todos los jugadores, con una regla especial. Se guardan el récord del día y la racha de días seguidos.
   - **Reglas**: se generan en `makeDaily`, en `js/levels.js`.
 
+## Idioma, accesibilidad y música
+
+- **Idioma**: español o inglés, en Ajustes. La primera vez se usa el del navegador.
+- **Accesibilidad** (en Ajustes):
+  - **modo daltónico**: cada tipo de pieza lleva un patrón de contorno y un símbolo propios;
+  - **texto grande**;
+  - **reducir animaciones**: por defecto sigue la preferencia del sistema.
+- **Música**: cada mundo tiene su pista, y hay otra para la supervivencia y los jefes. Se intensifica en las grandes oleadas.
+
 ## Ajustes, estadísticas y copias
 
 - **Ajustes** (menú o pausa):
@@ -128,7 +137,21 @@ Los cambios de cada versión están en [CHANGELOG.md](CHANGELOG.md).
 | Pausa | P o Esc |
 | Tienda | 1, 2 y 3 |
 
-**Controles en el móvil**: usa los botones de la parte de abajo o el dedo sobre el tablero. Toca para girar, arrastra para mover y desliza hacia abajo para soltar.
+**Controles en el móvil**: usa los botones de la parte de abajo o el dedo sobre el tablero. Toca para girar, arrastra para mover, desliza hacia abajo para soltar y hacia arriba para guardar la pieza.
+
+Las teclas se pueden cambiar en **Ajustes → Controles del teclado**.
+
+**Mando** (Xbox, PlayStation u otro con mapeo estándar):
+
+| Acción | Botón |
+|---|---|
+| Mover y bajar | cruceta o palanca |
+| Girar | A |
+| Girar al revés | B |
+| Soltar | X |
+| Guardar | Y |
+| Tienda | LB, RB y LT |
+| Pausa | Start |
 
 ## Estructura
 
@@ -177,7 +200,12 @@ Para jugar en pantalla completa, pulsa la tecla F o el botón ⛶.
   - `fall`: la velocidad de caída;
   - `lanes`: los carriles activos;
   - `waves`: las oleadas.
-- **Añadir inglés**: crea `BOTD.I18N.strings.en` en `js/i18n.js` con las mismas claves que el español.
+- **Añadir otro idioma**: el juego está en español e inglés. Para añadir uno nuevo, en `js/i18n.js`:
+  1. crea `BOTD.I18N.strings.xx` con las mismas claves que `es`;
+  2. añade `xx` a `LANGS`;
+  3. pon un botón en el selector de idioma de `index.html`.
+
+  Las pruebas avisan si falta alguna clave o algún marcador `{n}`.
 
 ## Licencia
 

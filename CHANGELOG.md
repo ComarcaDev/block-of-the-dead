@@ -2,6 +2,34 @@
 
 Todas las versiones de **Block of the Dead**. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y las versiones usan [SemVer](https://semver.org/lang/es/).
 
+## [1.3.0] - 2026-11-19
+
+### Añadido
+- **Inglés**:
+  - traducción completa del juego y selector Español / English en Ajustes;
+  - la primera vez se usa el idioma del navegador, y el cambio se aplica al momento, sin recargar.
+- **Música por mundo**:
+  - pistas distintas para el jardín, la noche, el cementerio, la supervivencia y los jefes;
+  - en las grandes oleadas y con un jefe en pantalla se añade una capa más intensa.
+- **Accesibilidad**, en Ajustes:
+  - **modo daltónico**: cada tipo de pieza lleva su propio patrón de contorno y un símbolo;
+  - **texto grande**;
+  - **reducir animaciones**: sin sacudidas, sin rebotes y con menos partículas. Por defecto sigue la preferencia del sistema.
+- **Teclas configurables**:
+  - en Ajustes se pulsa la acción y después la tecla nueva;
+  - si la tecla ya estaba en otra acción, se quita de allí y se avisa;
+  - hay un botón para restablecer las teclas;
+  - "Cómo jugar" muestra tus teclas actuales.
+- **Mando**:
+  - la cruceta o la palanca mueven y bajan la pieza;
+  - A gira, B gira al revés, X suelta e Y guarda;
+  - LB, RB y LT compran en la tienda, y Start pausa y reanuda;
+  - un aviso indica cuándo se conecta o se desconecta un mando.
+- **6 pruebas nuevas**, 71 en total, entre ellas una que comprueba que el español y el inglés tienen los mismos textos y marcadores.
+
+### Corregido
+- En el móvil, los nombres de la tienda ya no se parten a mitad de palabra.
+
 ## [1.2.0] - 2026-11-19
 
 ### Añadido
@@ -55,6 +83,7 @@ Todas las versiones de **Block of the Dead**. El formato sigue [Keep a Changelog
 - **Presentación**: estilo cartoon con dibujos SVG originales, sonido y música con Web Audio, controles táctiles y pantalla completa.
 - **Pruebas automáticas** en `tests.html`.
 
+[1.3.0]: https://github.com/ComarcaDev/block-of-the-dead/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/ComarcaDev/block-of-the-dead/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/ComarcaDev/block-of-the-dead/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/ComarcaDev/block-of-the-dead/releases/tag/v1.0.0

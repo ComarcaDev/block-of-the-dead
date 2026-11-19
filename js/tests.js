@@ -816,6 +816,97 @@
     assert(P.previousDay('2026-03-01') === '2026-02-28' && P.previousDay('2027-01-01') === '2026-12-31', 'Cambio de mes y año');
   });
 
+  /* ---------- v1.3: idiomas, música, accesibilidad, teclas y mando ---------- */
+  test('Idiomas: español e inglés tienen las mismas claves y marcadores', () => {
+    const S2 = BOTD.I18N.strings;
+    const es = Object.keys(S2.es), en = Object.keys(S2.en);
+    const missingEn = es.filter(k => !(k in S2.en)), missingEs = en.filter(k => !(k in S2.es));
+    assert(!missingEn.length, 'Faltan en inglés: ' + missingEn.join(', '));
+    assert(!missingEs.length, 'Faltan en español: ' + missingEs.join(', '));
+    const marks = s => (String(s).match(/\{\w+\}/g) || []).sort().join(',');
+    const bad = es.filter(k => marks(S2.es[k]) !== marks(S2.en[k]));
+    assert(!bad.length, 'Marcadores distintos en: ' + bad.join(', '));
+    const empty = es.concat(en).filter(k => !String(S2.es[k] || '').trim() || !String(S2.en[k] || '').trim());
+    assert(!empty.length, 'Textos vacíos: ' + empty.join(', '));
+  });
+
+  test('Idiomas: cambiar de idioma, sustituir marcadores y elegir el del navegador', () => {
+    const prev = BOTD.I18N.lang;
+    try {
+      BOTD.setLang('en');
+      assert(BOTD.t('menu_play') === 'Play' && BOTD.t('wave_n', { n: 3 }) === 'Wave 3!', BOTD.t('menu_play'));
+      BOTD.setLang('xx');
+      assert(BOTD.I18N.lang === 'en', 'Un idioma desconocido no cambia nada');
+      BOTD.setLang('es');
+      assert(BOTD.t('menu_play') === 'Jugar', 'Español');
+      assert(BOTD.t('clave_que_no_existe') === 'clave_que_no_existe', 'Clave desconocida');
+      assert(BOTD.resolveLang('en') === 'en' && BOTD.resolveLang('es') === 'es', 'Idioma guardado');
+      assert(BOTD.I18N.LANGS.includes(BOTD.resolveLang('')), 'Idioma del navegador');
+    } finally { BOTD.setLang(prev); }
+  });
+
+  test('Ajustes v1.3: idioma, accesibilidad y teclas se validan', () => {
+    const d = S.sanitize({ settings: { lang: 'en', colorblind: true, bigText: 'si', reduceMotion: false,
+      keys: { left: ['KeyJ'], rotate: 'x', drop: ['<script>'] } } });
+    const s = d.settings;
+    assert(s.lang === 'en' && s.colorblind === true && s.bigText === false && s.reduceMotion === false, JSON.stringify(s));
+    assert(s.keys.left[0] === 'KeyJ' && !('rotate' in s.keys) && s.keys.drop.length === 0, JSON.stringify(s.keys));
+    const def = S.sanitize({}).settings;
+    assert(def.lang === '' && def.reduceMotion === null && Object.keys(def.keys).length === 0, 'Valores por defecto');
+  });
+
+  test('Teclas: reasignar una tecla la quita de la otra acción', () => {
+    const I = BOTD.Input;
+    const r = I.rebind(I.DEFAULT_KEYS, 'drop', 'KeyA');
+    assert(r.bindings.drop.join() === 'KeyA', 'Soltar: ' + r.bindings.drop);
+    assert(r.movedFrom === 'left' && !r.bindings.left.includes('KeyA') && r.bindings.left.includes('ArrowLeft'), 'Izquierda: ' + r.bindings.left);
+    const r2 = I.rebind(I.DEFAULT_KEYS, 'hold', 'KeyV');
+    assert(r2.movedFrom === null && r2.bindings.hold.join() === 'KeyV', 'Tecla libre');
+    assert(I.keyLabel('ArrowLeft') === '←' && I.keyLabel('KeyQ') === 'Q' && I.keyLabel('Digit3') === '3', 'Nombres de teclas');
+  });
+
+  test('Mando: los botones y la cruceta producen las acciones', () => {
+    const I = BOTD.Input;
+    const got = [];
+    I.setHandlers({
+      move: d => got.push('move' + d), rotate: () => got.push('rotate'), rotateCCW: () => got.push('ccw'),
+      drop: () => got.push('drop'), hold: () => got.push('hold'), pause: () => got.push('pause'),
+      shop1: () => got.push('shop1'), soft: v => got.push('soft' + (v ? 1 : 0))
+    });
+    const pad = (pressed, axes) => [{ connected: true, axes: axes || [0, 0],
+      buttons: Array.from({ length: 17 }, (_, i) => ({ pressed: pressed.includes(i), value: pressed.includes(i) ? 1 : 0 })) }];
+    I.pollPads(pad([0]));          // A
+    I.pollPads(pad([0]));          // mantener A no repite
+    I.pollPads(pad([]));
+    I.pollPads(pad([2, 3]));       // X e Y
+    I.pollPads(pad([]));
+    I.pollPads(pad([14]));         // izquierda en la cruceta
+    I.pollPads(pad([], [0, 0.9])); // palanca hacia abajo (suelta la izquierda)
+    I.pollPads(pad([9, 4], [0, 0.9])); // Start y LB, con la palanca aún abajo
+    I.pollPads([]);                // mando desconectado: debe soltar la palanca
+    const s = got.join(' ');
+    ['rotate', 'drop', 'hold', 'move-1', 'soft1', 'pause', 'shop1'].forEach(k => assert(got.includes(k), 'Falta ' + k + ' en: ' + s));
+    assert(got.filter(x => x === 'rotate').length === 1, 'A mantenido no debe repetir: ' + s);
+    assert(got[got.length - 1] === 'soft0', 'Al desconectar se suelta todo: ' + s);
+    I.setHandlers({});
+    I.reset();
+  });
+
+  test('Música: cada mundo tiene su pista y todas son válidas', () => {
+    const A2 = BOTD.Audio;
+    assert(A2.trackFor(BOTD.Levels.get(0)) === 'garden', 'Mundo 1');
+    assert(A2.trackFor(BOTD.Levels.get(4)) === 'night', 'Noche');
+    assert(A2.trackFor(BOTD.Levels.get(6)) === 'graveyard', 'Cementerio');
+    assert(A2.trackFor(BOTD.Levels.get(-1)) === 'survival', 'Supervivencia');
+    for (const k in A2.TRACKS) {
+      const t = A2.TRACKS[k];
+      assert(t.bass.length === 32 && t.mel.length === 32 && t.step > 0.05, 'Pista ' + k);
+    }
+    A2.setTrack('boss'); A2.setIntensity(true);
+    assert(A2.trackName === 'boss' && A2.intensity === 1, 'Cambio de pista e intensidad');
+    A2.setTrack('garden'); A2.setIntensity(false);
+  });
+
   /* ---------- Ejecutar ---------- */
   const results = [];
   const list = document.getElementById('results');
