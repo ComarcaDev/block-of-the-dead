@@ -1,0 +1,522 @@
+/* Interfaz HTML: pantallas, HUD, tienda, selector de pieza y "Cómo jugar". */
+window.BOTD = window.BOTD || {};
+
+BOTD.UI = (() => {
+  const C = BOTD.CONFIG;
+  const $ = id => document.getElementById(id);
+  let onCommand = () => {};
+  let last = {};
+
+  function fire(cmd, arg) {
+    BOTD.Audio.init();
+    if (cmd !== 'shop') BOTD.Audio.play('click');
+    onCommand(cmd, arg);
+  }
+
+  function init(handler) {
+    onCommand = handler;
+    BOTD.applyI18n(document);
+    document.querySelectorAll('[data-cmd]').forEach(el => {
+      el.addEventListener('click', () => { fire(el.dataset.cmd, el.dataset.arg); el.blur(); });
+    });
+    document.querySelectorAll('[data-shop]').forEach(el => {
+      const cost = el.querySelector('.cost');
+      cost.innerHTML = '<img class="ico" alt="" src="' + BOTD.Assets.url('brain') + '">';
+      cost.appendChild(document.createTextNode(C.SHOP[el.dataset.shop]));
+      el.addEventListener('click', () => { fire('shop', el.dataset.shop); el.blur(); });
+    });
+    const fsOk = document.fullscreenEnabled || document.webkitFullscreenEnabled;
+    document.body.classList.toggle('no-fs', !fsOk);
+  }
+
+  // Se llama cuando las imágenes ya están cargadas
+  function setReady(data, count) {
+    buildHowto();
+    buildPicker();
+    $('btn-play').disabled = false;
+    refreshMenu(data, count);
+  }
+
+  function pop(el) {
+    el.classList.remove('pop');
+    void el.offsetWidth;
+    el.classList.add('pop');
+  }
+
+  // Cerebros que vuelan desde el tablero hasta el contador
+  function flyBrains(n, from) {
+    const target = $('hud-brains');
+    if (!from || !target) return;
+    const tr = target.getBoundingClientRect();
+    const count = Math.min(5, Math.max(1, Math.round(n / 8)));
+    for (let i = 0; i < count; i++) {
+      const el = document.createElement('img');
+      el.src = BOTD.Assets.url('brain');
+      el.className = 'fly-brain';
+      const sx = from.x - 15 + (Math.random() - 0.5) * 30;
+      const sy = from.y - 12 + (Math.random() - 0.5) * 20;
+      el.style.left = sx + 'px';
+      el.style.top = sy + 'px';
+      document.body.appendChild(el);
+      const dx = tr.left + tr.width / 2 - 15 - sx;
+      const dy = tr.top + tr.height / 2 - 12 - sy;
+      setTimeout(() => { el.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(.7)'; el.style.opacity = '.3'; }, 30 + i * 70);
+      setTimeout(() => { el.remove(); pop(target.parentElement); }, 760 + i * 70);
+    }
+  }
+
+  function showScreen(name) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === 'screen-' + name));
+    $('screens').classList.toggle('show', !!name);
+  }
+
+  function refreshMenu(data, count) {
+    const n = Math.min(data.unlocked, count);
+    $('btn-play').textContent = n > 1 ? BOTD.t('continue_n', { n }) : BOTD.t('menu_play');
+    const sv = $('btn-survival');
+    const open = survivalOpen(data);
+    sv.disabled = !open;
+    sv.textContent = open ? BOTD.t('menu_survival') : '🔒 ' + BOTD.t('menu_survival');
+    sv.title = open ? '' : BOTD.t('survival_locked');
+  }
+
+  const survivalOpen = data => data.unlocked > 5;
+
+  /* ---------- Cobertizo ---------- */
+  function buildShed(data) {
+    $('shed-bank').textContent = data.bank;
+    const list = $('shed-list');
+    list.innerHTML = '';
+    const P = BOTD.Progress;
+    P.UPGRADE_KEYS.forEach(k => {
+      const row = document.createElement('div');
+      row.className = 'shed-row';
+      const info = document.createElement('div');
+      info.className = 'shed-info';
+      const b = document.createElement('b'); b.textContent = BOTD.t('up_' + k);
+      const s = document.createElement('span'); s.textContent = BOTD.t('up_' + k + '_d');
+      const pips = document.createElement('div');
+      pips.className = 'pips';
+      for (let i = 0; i < P.maxLevel(k); i++) {
+        const p = document.createElement('i');
+        if (i < P.level(data, k)) p.className = 'on';
+        pips.appendChild(p);
+      }
+      info.append(b, s, pips);
+      const btn = document.createElement('button');
+      btn.className = 'btn small shed-buy';
+      const c = P.cost(data, k);
+      if (c == null) {
+        btn.textContent = BOTD.t('maxed');
+        btn.disabled = true;
+      } else {
+        btn.innerHTML = '<img class="ico" alt="" src="' + BOTD.Assets.url('brain') + '">';
+        btn.appendChild(document.createTextNode(c));
+        btn.disabled = !P.canBuy(data, k);
+        btn.addEventListener('click', () => fire('shed-buy', k));
+      }
+      row.append(info, btn);
+      list.appendChild(row);
+    });
+  }
+
+  /* ---------- Logros ---------- */
+  function buildAchievements(data) {
+    const list = BOTD.Progress.ACHIEVEMENTS;
+    const got = list.filter(a => data.achievements[a.id]).length;
+    $('ach-count').textContent = BOTD.t('ach_count', { n: got, t: list.length });
+    const grid = $('ach-grid');
+    grid.innerHTML = '';
+    list.forEach(a => {
+      const on = !!data.achievements[a.id];
+      const d = document.createElement('div');
+      d.className = 'ach' + (on ? ' on' : '');
+      const m = document.createElement('div'); m.className = 'medal'; m.textContent = on ? '🏆' : '🔒';
+      const txt = document.createElement('div');
+      const b = document.createElement('b'); b.textContent = BOTD.t('ach_' + a.id);
+      const s = document.createElement('span'); s.textContent = BOTD.t('ach_' + a.id + '_d');
+      txt.append(b, s);
+      d.append(m, txt);
+      grid.appendChild(d);
+    });
+  }
+
+  // Aviso animado (logro conseguido)
+  function toast(title, text) {
+    const box = $('toasts');
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.innerHTML = '<div class="medal">🏆</div><div><small></small><b></b></div>';
+    t.querySelector('small').textContent = title;
+    t.querySelector('b').textContent = text;
+    box.appendChild(t);
+    setTimeout(() => t.classList.add('out'), 3200);
+    setTimeout(() => t.remove(), 3700);
+  }
+
+  // Mapa de niveles agrupado por mundos
+  function buildLevels(data, count, debug) {
+    const list = $('level-list');
+    list.innerHTML = '';
+    BOTD.Levels.WORLDS.forEach((w, wi) => {
+      const sec = document.createElement('section');
+      sec.className = 'world world-' + (wi + 1);
+      const h = document.createElement('h3');
+      h.textContent = BOTD.t(w.nameKey);
+      const path = document.createElement('div');
+      path.className = 'world-path';
+      w.levels.filter(i => i < count).forEach(i => {
+        const lv = BOTD.Levels.get(i);
+        const unlocked = debug || i < data.unlocked;
+        const beaten = i + 1 < data.unlocked;
+        const best = data.best[i + 1];
+        const b = document.createElement('button');
+        b.className = 'level-node' + (beaten ? ' beaten' : '') + (unlocked && !beaten ? ' current' : '');
+        b.disabled = !unlocked;
+        b.innerHTML = '<span class="lv-num"></span><span class="lv-name"></span><span class="lv-best"></span>';
+        b.querySelector('.lv-num').textContent = unlocked ? i + 1 : '🔒';
+        b.querySelector('.lv-name').textContent = BOTD.t(lv.nameKey);
+        b.querySelector('.lv-best').textContent = unlocked
+          ? (best ? BOTD.t('best', { n: best }) : BOTD.t('no_best'))
+          : BOTD.t('locked');
+        b.addEventListener('click', () => fire('level', String(i)));
+        path.appendChild(b);
+      });
+      sec.append(h, path);
+      list.appendChild(sec);
+    });
+  }
+
+  /* ---------- Elección de defensas antes del nivel ---------- */
+  let loadout = null;   // { levelIndex, allowed: [], sel: { I: 'wall', ... } }
+
+  function openLoadout(levelIndex, allowed, current) {
+    loadout = { levelIndex, allowed: allowed.slice(), sel: Object.assign({}, current) };
+    const lv = BOTD.Levels.get(levelIndex);
+    $('loadout-level').textContent = (levelIndex < 0 ? '∞' : levelIndex + 1) + '. ' + BOTD.t(lv.nameKey);
+    renderLoadout();
+    showScreen('loadout');
+  }
+
+  function renderLoadout() {
+    const list = $('loadout-list');
+    list.innerHTML = '';
+    BOTD.Pieces.BAG.forEach(kind => {
+      const row = document.createElement('div');
+      row.className = 'lo-row';
+      const prev = document.createElement('canvas');
+      prev.width = 112; prev.height = 112;
+      prev.className = 'lo-piece';
+      BOTD.Render.drawPreview(prev, kind, loadout.sel[kind]);
+      const info = document.createElement('div');
+      info.className = 'lo-info';
+      const b = document.createElement('b'); b.textContent = BOTD.t('piece_n', { k: kind });
+      const s = document.createElement('span'); s.textContent = BOTD.t('def_' + loadout.sel[kind]);
+      info.append(b, s);
+      const opts = document.createElement('div');
+      opts.className = 'lo-opts';
+      loadout.allowed.forEach(type => {
+        const o = document.createElement('button');
+        o.className = 'lo-opt' + (loadout.sel[kind] === type ? ' selected' : '');
+        o.title = BOTD.t('def_' + type);
+        o.setAttribute('aria-label', BOTD.t('piece_n', { k: kind }) + ': ' + BOTD.t('def_' + type));
+        const cv = document.createElement('canvas');
+        cv.width = 88; cv.height = 88;
+        BOTD.Render.drawIcon(cv, 'defense', type);
+        o.appendChild(cv);
+        o.addEventListener('click', () => {
+          loadout.sel[kind] = type;
+          BOTD.Audio.init();
+          BOTD.Audio.play('click');
+          renderLoadout();
+        });
+        opts.appendChild(o);
+      });
+      row.append(prev, info, opts);
+      list.appendChild(row);
+    });
+  }
+
+  function resetLoadout() {
+    if (!loadout) return;
+    loadout.sel = BOTD.Levels.loadoutFor({}, loadout.allowed);
+    renderLoadout();
+  }
+
+  function getLoadout() { return loadout; }
+
+  /* ---------- Almanaque ---------- */
+  const ALM_DEF = ['wall', 'bunker', 'shooter', 'mine', 'slime', 'ice', 'cactus', 'sunflower', 'single', 'bomb', 'dirt', 'grave'];
+  const ALM_ZOMB = ['basic', 'cone', 'runner', 'bucket', 'shield', 'digger', 'balloon', 'boss', 'boss2'];
+  let almTab = 'def';
+
+  function defenseStats(t) {
+    const D = C.DEFENSES[t] || {};
+    const out = [];
+    if (t === 'bomb') { out.push(BOTD.t('stat_dmg', { n: C.BOMB.damage })); return out; }
+    if (D.hp && t !== 'grave') out.push(BOTD.t('stat_hp', { n: D.gunHp || D.hp }));
+    if (t === 'shooter' || t === 'ice') {
+      out.push(BOTD.t('stat_dmg', { n: D.damage }));
+      out.push(BOTD.t('stat_rate', { n: D.fireInterval }));
+    }
+    if (t === 'ice' || t === 'slime') out.push(BOTD.t('stat_slow', { n: Math.round((1 - D.slowFactor) * 100) }));
+    if (t === 'mine') { out.push(BOTD.t('stat_dmg', { n: D.damage })); out.push(BOTD.t('stat_radius', { n: D.radius })); }
+    if (t === 'cactus') out.push(BOTD.t('stat_thorns', { n: D.thorns }));
+    if (t === 'sunflower') out.push(BOTD.t('stat_brains', { n: D.brains, s: D.interval }));
+    return out;
+  }
+
+  function zombieStats(t) {
+    const Z = C.ZOMBIES[t];
+    const sp = Z.speed >= 0.6 ? 'speed_fast' : Z.speed >= 0.4 ? 'speed_mid' : 'speed_slow';
+    const out = [BOTD.t('stat_hp', { n: Z.hp }), BOTD.t('stat_speed', { n: BOTD.t(sp) }), BOTD.t('stat_bite', { n: Z.bite })];
+    if (Z.shield) out.push(BOTD.t('stat_shield', { n: Z.shield }));
+    return out;
+  }
+
+  function buildAlmanac(data, tab) {
+    if (tab) almTab = tab;
+    document.querySelectorAll('[data-cmd="alm-tab"]').forEach(b => b.classList.toggle('selected', b.dataset.arg === almTab));
+    const isDef = almTab === 'def';
+    const types = isDef ? ALM_DEF : ALM_ZOMB;
+    const seenMap = isDef ? data.almanac.defenses : data.almanac.zombies;
+    const grid = $('alm-grid');
+    grid.innerHTML = '';
+    showAlmDetail(null);
+    types.forEach(t => {
+      const seen = !!seenMap[t];
+      const b = document.createElement('button');
+      b.className = 'alm-entry' + (seen ? '' : ' unknown');
+      const cv = document.createElement('canvas');
+      cv.width = 120; cv.height = 120;
+      BOTD.Render.drawIcon(cv, isDef ? 'defense' : 'zombie', t, !seen);
+      const n = document.createElement('span');
+      n.textContent = seen ? BOTD.t((isDef ? 'def_' : 'z_') + t) : BOTD.t('alm_unknown');
+      b.append(cv, n);
+      b.addEventListener('click', () => {
+        BOTD.Audio.play('click');
+        grid.querySelectorAll('.alm-entry').forEach(e => e.classList.remove('selected'));
+        b.classList.add('selected');
+        showAlmDetail({ isDef, t, seen });
+      });
+      grid.appendChild(b);
+    });
+  }
+
+  function showAlmDetail(info) {
+    const box = $('alm-detail');
+    box.innerHTML = '';
+    if (!info) {
+      const p = document.createElement('p'); p.className = 'alm-hint'; p.textContent = BOTD.t('alm_pick');
+      box.appendChild(p);
+      return;
+    }
+    const cv = document.createElement('canvas');
+    cv.width = 200; cv.height = 200;
+    BOTD.Render.drawIcon(cv, info.isDef ? 'defense' : 'zombie', info.t, !info.seen);
+    const txt = document.createElement('div');
+    const h = document.createElement('h4');
+    const p = document.createElement('p');
+    if (info.seen) {
+      const pre = info.isDef ? 'def_' : 'z_';
+      h.textContent = BOTD.t(pre + info.t);
+      p.textContent = BOTD.t(pre + info.t + '_d');
+      txt.append(h, p);
+      const ul = document.createElement('ul');
+      (info.isDef ? defenseStats(info.t) : zombieStats(info.t)).forEach(s => {
+        const li = document.createElement('li'); li.textContent = s; ul.appendChild(li);
+      });
+      txt.appendChild(ul);
+      if (info.isDef) {
+        const lvl = BOTD.Levels.unlockLevelOf(info.t);
+        if (lvl) { const u = document.createElement('p'); u.className = 'alm-hint'; u.textContent = BOTD.t('unlock_after', { n: lvl }); txt.appendChild(u); }
+      }
+    } else {
+      h.textContent = BOTD.t('alm_unknown');
+      p.textContent = BOTD.t('alm_unknown_d');
+      txt.append(h, p);
+    }
+    box.append(cv, txt);
+  }
+
+  // newDefense: defensa desbloqueada al ganar este nivel por primera vez (o null)
+  // extra: { bankGain, bankTotal, survival: { wave, bestWave, newBest } }
+  function showResult(result, g, newBest, hasNext, newDefense, extra) {
+    extra = extra || {};
+    const sv = extra.survival;
+    const title = $('result-title');
+    title.textContent = sv ? BOTD.t('survival_over')
+      : result.won ? (hasNext ? BOTD.t('win_title') : BOTD.t('final_win')) : BOTD.t('lose_title');
+    title.className = result.won || sv ? 'win' : 'lose';
+    $('result-reason').textContent = sv ? BOTD.t('survival_reached', { n: sv.wave })
+      : result.won ? (g.levelIndex + 1) + '. ' + BOTD.t(g.level.nameKey)
+      : BOTD.t(result.reason === 'top' ? 'lose_top' : 'lose_lives');
+    const s = $('result-stats');
+    s.innerHTML = '';
+    const lines = [BOTD.t('result_score', { n: g.score }), BOTD.t('result_lines', { n: g.lines }), BOTD.t('result_kills', { n: g.kills })];
+    if (g.stats.maxCombo >= 2) lines.push(BOTD.t('result_combo', { n: g.stats.maxCombo }));
+    if (result.won && result.rollersLeft) lines.push(BOTD.t('roller_bonus', { n: result.rollersLeft, p: result.rollerPoints }));
+    if (sv) lines.push(BOTD.t('survival_best', { n: sv.bestWave }));
+    if (extra.bankGain) lines.push(BOTD.t('bank_gain', { n: extra.bankGain, t: extra.bankTotal }));
+    lines.forEach(t => { const p = document.createElement('p'); p.textContent = t; s.appendChild(p); });
+    if (newBest || (sv && sv.newBest)) { const p = document.createElement('p'); p.className = 'new-best'; p.textContent = BOTD.t('new_best'); s.appendChild(p); }
+
+    // Tarjeta "¡Nueva defensa!"
+    const card = $('new-defense');
+    if (newDefense) {
+      card.innerHTML = '';
+      const h = document.createElement('div'); h.className = 'nd-title'; h.textContent = BOTD.t('new_defense');
+      const cv = document.createElement('canvas'); cv.width = 160; cv.height = 160;
+      BOTD.Render.drawIcon(cv, 'defense', newDefense);
+      const name = document.createElement('b'); name.textContent = BOTD.t('def_' + newDefense);
+      const desc = document.createElement('span'); desc.textContent = BOTD.t('def_' + newDefense + '_d');
+      card.append(h, cv, name, desc);
+      card.style.display = '';
+      BOTD.Audio.play('unlock');
+    } else {
+      card.style.display = 'none';
+    }
+
+    $('btn-next').style.display = result.won && hasNext ? '' : 'none';
+    showScreen('result');
+  }
+
+  /* ---------- Bocadillo del tutorial ---------- */
+  function showTip(text, n, total) {
+    const tip = $('tip');
+    tip.querySelector('.tip-step').textContent = BOTD.t('tut_step', { n, t: total });
+    tip.querySelector('.tip-text').textContent = text;
+    tip.classList.remove('hidden');
+    pop(tip);
+  }
+
+  function hideTip() { $('tip').classList.add('hidden'); }
+
+  function setText(id, v) {
+    if (last[id] !== v) { last[id] = v; $(id).textContent = v; return true; }
+    return false;
+  }
+
+  function updateHud(g) {
+    if (!g) return;
+    setText('hud-level', g.level.endless ? '∞' : String(g.levelIndex + 1));
+    setText('hud-wave', g.level.endless ? String(Math.max(0, g.waves.index + 1))
+      : Math.max(0, g.waves.index + 1) + '/' + g.level.waves.length);
+    setText('hud-lives', '❤'.repeat(Math.max(0, g.lives)) + '♡'.repeat(Math.max(0, C.LIVES - g.lives)));
+    setText('hud-brains', String(g.brains));
+    if (last.scoreN == null || g.score < last.scoreN || g.score - last.scoreN >= 50) {
+      if (last.scoreN != null && g.score > last.scoreN) pop($('hud-score'));
+      last.scoreN = g.score;
+      setText('hud-score', String(g.score));
+    }
+    if (last.next !== g.next) { last.next = g.next; BOTD.Render.drawPreview($('next'), g.next, BOTD.Game.typeOf(g, g.next)); }
+    const key = g.brains + '|' + g.nextBought + '|' + g.over + '|' + [...g.shopLocked].join(',');
+    if (last.shop !== key) {
+      last.shop = key;
+      document.querySelectorAll('[data-shop]').forEach(el => {
+        const locked = g.shopLocked.has(el.dataset.shop);
+        el.classList.toggle('locked', locked);
+        el.classList.toggle('off', !BOTD.Game.canAfford(g, el.dataset.shop));
+        el.title = locked ? BOTD.t('shop_locked') : '';
+      });
+    }
+  }
+
+  function resetHud() { last = {}; }
+
+  function updateToggles(settings) {
+    const yn = v => (v ? BOTD.t('on') : BOTD.t('off'));
+    document.querySelectorAll('.tg-sfx').forEach(el => { el.textContent = BOTD.t('sound') + ': ' + yn(settings.sfx); });
+    document.querySelectorAll('.tg-music').forEach(el => { el.textContent = BOTD.t('music') + ': ' + yn(settings.music); });
+    $('btn-sfx').textContent = settings.sfx ? '🔊' : '🔇';
+    $('btn-sfx').classList.toggle('off', !settings.sfx);
+    $('btn-music').classList.toggle('off', !settings.music);
+  }
+
+  function item(canvasDraw, name, desc) {
+    const d = document.createElement('div');
+    d.className = 'howto-item';
+    const cv = document.createElement('canvas');
+    cv.width = 112; cv.height = 112;
+    canvasDraw(cv);
+    const txt = document.createElement('div');
+    const b = document.createElement('b'); b.textContent = name;
+    const sp = document.createElement('span'); sp.textContent = desc;
+    txt.append(b, sp);
+    d.append(cv, txt);
+    return d;
+  }
+
+  function section(root, titleKey) {
+    const h = document.createElement('h3');
+    h.textContent = BOTD.t(titleKey);
+    root.appendChild(h);
+  }
+
+  function para(root, key) {
+    const p = document.createElement('p');
+    p.textContent = BOTD.t(key);
+    root.appendChild(p);
+  }
+
+  function buildHowto() {
+    const root = $('howto-body');
+    root.innerHTML = '';
+    section(root, 'howto_goal_title');
+    para(root, 'howto_goal');
+
+    section(root, 'howto_def_title');
+    const defs = document.createElement('div');
+    defs.className = 'howto-list';
+    ['wall', 'bunker', 'shooter', 'mine', 'slime', 'single', 'bomb', 'dirt'].forEach(t => {
+      const lvl = BOTD.Levels.unlockLevelOf(t);
+      const desc = BOTD.t('def_' + t + '_d') + (lvl ? ' ' + BOTD.t('unlock_after', { n: lvl }) : '');
+      defs.appendChild(item(cv => BOTD.Render.drawIcon(cv, 'defense', t), BOTD.t('def_' + t), desc));
+    });
+    root.appendChild(defs);
+
+    section(root, 'howto_roller_title');
+    para(root, 'howto_roller');
+
+    section(root, 'howto_zomb_title');
+    const zs = document.createElement('div');
+    zs.className = 'howto-list';
+    ['basic', 'cone', 'runner', 'boss'].forEach(t => {
+      zs.appendChild(item(cv => BOTD.Render.drawIcon(cv, 'zombie', t), BOTD.t('z_' + t), BOTD.t('z_' + t + '_d')));
+    });
+    root.appendChild(zs);
+
+    para(root, 'howto_more');
+
+    section(root, 'howto_ctrl_title');
+    para(root, 'ctrl_keys');
+    root.appendChild(document.createElement('br'));
+    para(root, 'ctrl_touch');
+  }
+
+  // Se reconstruye al abrirlo para mostrar la defensa real de cada pieza en esta partida
+  function buildPicker(g) {
+    const grid = $('picker-grid');
+    grid.innerHTML = '';
+    BOTD.Pieces.BAG.forEach(kind => {
+      const type = g ? BOTD.Game.typeOf(g, kind) : BOTD.Pieces.TYPE[kind];
+      const b = document.createElement('button');
+      b.className = 'btn picker-btn';
+      const cv = document.createElement('canvas');
+      cv.width = 160; cv.height = 160;
+      BOTD.Render.drawPreview(cv, kind, type);
+      const label = document.createElement('span');
+      label.textContent = BOTD.t('def_' + type);
+      b.append(cv, label);
+      b.addEventListener('click', () => fire('pick', kind));
+      grid.appendChild(b);
+    });
+  }
+
+  return {
+    init, setReady, showScreen, refreshMenu, buildLevels, showResult, updateHud, resetHud,
+    updateToggles, flyBrains, buildPicker, showTip, hideTip,
+    openLoadout, resetLoadout, getLoadout, buildAlmanac,
+    buildShed, buildAchievements, toast
+  };
+})();
