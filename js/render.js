@@ -61,6 +61,7 @@ BOTD.Render = (() => {
   }
 
   function easeOutBack(t) {
+    if (BOTD.Prefs.reduceMotion) return 1;   // sin rebotes
     const c1 = 1.70158, c3 = c1 + 1;
     return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
   }
@@ -76,6 +77,7 @@ BOTD.Render = (() => {
   }
 
   function outlinedText(c, text, x, y, size, fill, stroke) {
+    size = Math.round(size * (BOTD.Prefs.textScale || 1));
     c.font = size + 'px ' + FONT;
     c.textAlign = 'center';
     c.textBaseline = 'middle';
@@ -398,24 +400,48 @@ BOTD.Render = (() => {
   // Defensas con cabeza que sobresale: se dibujan en una segunda pasada, por encima del resto
   const TALL = { shooter: true, ice: true, sunflower: true };
 
+  // Modo daltónico: cada pieza tiene además un patrón de contorno y un símbolo propios
+  const KIND_BY_COLOR = {};
+  Object.keys(BOTD.Pieces.COLORS).forEach(k => { KIND_BY_COLOR[BOTD.Pieces.COLORS[k]] = k; });
+  const CB_DASH = { I: [], O: [10, 4], T: [2, 4], L: [9, 3, 2, 3], J: [5, 4], S: [13, 6], Z: [2, 2], U: [], B: [] };
+  const CB_SYMBOL = { I: '|', O: '■', T: '▲', L: '◣', J: '◢', S: 'S', Z: 'Z', U: '•', B: '✱' };
+
+  function drawSymbol(c, x, y, kind) {
+    const sym = CB_SYMBOL[kind];
+    if (!sym) return;
+    c.font = '13px ' + FONT;
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.lineWidth = 3;
+    c.strokeStyle = INK;
+    c.strokeText(sym, x + 9, y + CELL - 9);
+    c.fillStyle = '#fff';
+    c.fillText(sym, x + 9, y + CELL - 9);
+  }
+
   // Contorno del color de la pieza solo por los bordes exteriores
-  function drawOutline(c, x, y, color, edges) {
+  function drawOutline(c, x, y, color, edges, kind) {
     const i = 1.5, e = CELL - 1.5;
     const segs = [];
     if (edges.top) segs.push([i, i, e, i]);
     if (edges.bottom) segs.push([i, e, e, e]);
     if (edges.left) segs.push([i, i, i, e]);
     if (edges.right) segs.push([e, i, e, e]);
+    const cb = BOTD.Prefs.colorblind;
+    kind = kind || KIND_BY_COLOR[color];
+    if (cb && color) drawSymbol(c, x, y, kind);
     if (!segs.length || !color) return;   // las lápidas no llevan contorno
-    c.lineCap = 'round';
+    c.lineCap = cb ? 'butt' : 'round';
     c.strokeStyle = 'rgba(30,15,5,0.55)';
     c.lineWidth = 5;
     c.beginPath();
     segs.forEach(s => { c.moveTo(x + s[0], y + s[1]); c.lineTo(x + s[2], y + s[3]); });
     c.stroke();
+    if (cb) c.setLineDash(CB_DASH[kind] || []);
     c.strokeStyle = color;
-    c.lineWidth = 2.5;
+    c.lineWidth = cb ? 3.5 : 2.5;
     c.stroke();
+    if (cb) c.setLineDash([]);
   }
 
   function gridOutlines(c, grid) {
@@ -460,10 +486,10 @@ BOTD.Render = (() => {
       const edges = { top: !has(x, y - 1), bottom: !has(x, y + 1), left: !has(x - 1, y), right: !has(x + 1, y) };
       if (ghost) {
         c.globalAlpha = 0.7;
-        drawOutline(c, ox + x * CELL, oy + y * CELL, color, edges);
+        drawOutline(c, ox + x * CELL, oy + y * CELL, color, edges, kind);
         c.globalAlpha = 1;
       } else {
-        drawOutline(c, ox + x * CELL, oy + y * CELL, color, edges);
+        drawOutline(c, ox + x * CELL, oy + y * CELL, color, edges, kind);
       }
     }));
   }
@@ -698,7 +724,7 @@ BOTD.Render = (() => {
     c.imageSmoothingEnabled = true;
     c.drawImage(background(g.level.ambient, g.level.lanes), 0, 0);
     c.setTransform(S, 0, 0, S, 0, -VIEW_TOP * S);
-    if (g.shake > 0 && BOTD.Prefs.shake) {
+    if (g.shake > 0 && BOTD.Prefs.shake && !BOTD.Prefs.reduceMotion) {
       const m = g.shake * 14;
       c.translate((Math.random() - 0.5) * m, (Math.random() - 0.5) * m);
     }

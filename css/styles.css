@@ -617,7 +617,7 @@ button { font-family: var(--text); font-weight: 700; color: var(--cream); cursor
   .piece-boxes .next-box { padding: 2px 4px; font-size: 9px; }
   .piece-boxes #next, .piece-boxes #hold { width: 48px; height: 48px; }
   .shop-list .shop-btn { min-width: 0; overflow: hidden; }
-  .shop-btn .label { font-size: 9px; line-height: 1.1; overflow-wrap: anywhere; }
+  .shop-btn .label { font-size: 9px; line-height: 1.1; overflow-wrap: break-word; hyphens: auto; }
   .touch-controls { gap: 5px; }
   .touch-controls button { font-size: 20px; }
 }
@@ -676,6 +676,44 @@ button { font-family: var(--text); font-weight: 700; color: var(--cream); cursor
 .set-msg { min-height: 1.2em; margin: 6px 0 0; font-size: 14px; }
 .set-msg.ok { color: #b8ff8f; }
 .set-msg.bad { color: #ffb0b0; }
+
+/* ---------- Teclas ---------- */
+.keys-list { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.key-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--cream);
+  background: rgba(60, 28, 8, .42);
+  border: 2px solid transparent;
+  border-radius: 10px;
+  text-align: left;
+}
+.key-row:hover { border-color: var(--yellow); }
+.key-row kbd {
+  padding: 2px 7px;
+  font-family: var(--title);
+  font-size: 14px;
+  color: var(--ink);
+  background: #fff6dc;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.key-row.waiting { border-color: #7ee35a; animation: glow 1.2s ease-in-out infinite; }
+@media (max-width: 560px) { .keys-list { grid-template-columns: 1fr; } }
+
+/* ---------- Accesibilidad ---------- */
+.big-text .card, .big-text #panel, .big-text .toasts, .big-text .tip { zoom: 1.15; }
+.big-text .touch-controls button { font-size: 28px; }
+.reduce-motion *, .reduce-motion *::before, .reduce-motion *::after {
+  animation-duration: .01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: .01ms !important;
+}
 
 /* ---------- Estadísticas ---------- */
 .stats-body { text-align: left; }

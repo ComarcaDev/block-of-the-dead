@@ -20,7 +20,12 @@ BOTD.Storage = (() => {
         quality: 'auto',                   // 'auto' | 'high' | 'low'
         shake: true,                       // sacudidas de pantalla
         showFps: false,                    // contador de FPS
-        difficulty: 'normal'               // 'easy' | 'normal' | 'hard'
+        difficulty: 'normal',              // 'easy' | 'normal' | 'hard'
+        lang: '',                          // '' = idioma del navegador; 'es' | 'en'
+        colorblind: false,                 // símbolos y patrones en las piezas
+        bigText: false,                    // interfaz y textos más grandes
+        reduceMotion: null,                // null = según el sistema; true/false = elegido
+        keys: {}                           // teclas personalizadas { acción: [códigos] } (vacío = por defecto)
       },
       // Reto diario: récord del día, racha de días seguidos y último día jugado
       daily: { date: '', best: 0, streak: 0, bestStreak: 0, last: '' },
@@ -77,6 +82,16 @@ BOTD.Storage = (() => {
       out.settings.shake = bool(s.shake, true);
       out.settings.showFps = bool(s.showFps, false);
       out.settings.difficulty = ['easy', 'normal', 'hard'].includes(s.difficulty) ? s.difficulty : 'normal';
+      out.settings.lang = typeof s.lang === 'string' && /^[a-z]{2}$/.test(s.lang) ? s.lang : '';
+      out.settings.colorblind = bool(s.colorblind, false);
+      out.settings.bigText = bool(s.bigText, false);
+      out.settings.reduceMotion = typeof s.reduceMotion === 'boolean' ? s.reduceMotion : null;
+      if (isObj(s.keys)) {
+        for (const a in s.keys) {
+          const codes = Array.isArray(s.keys[a]) ? s.keys[a].filter(c => typeof c === 'string' && /^[A-Za-z0-9]{1,24}$/.test(c)).slice(0, 4) : null;
+          if (codes) out.settings.keys[a] = codes;
+        }
+      }
     }
     if (isObj(d.daily)) {
       const dl = d.daily;

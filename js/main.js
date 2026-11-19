@@ -13,6 +13,7 @@
   let game = null;
 
   S.load();
+  BOTD.setLang(BOTD.resolveLang(S.data.settings.lang));   // idioma guardado o el del navegador
   A.setSfx(S.data.settings.sfx);
   A.setMusic(S.data.settings.music);
   R.init(ctx);
@@ -52,8 +53,26 @@
     fullscreen: toggleFullscreen,
     shop1: () => command('shop', 'choose'),
     shop2: () => command('shop', 'single'),
-    shop3: () => command('shop', 'bomb')
-  });
+    shop3: () => command('shop', 'bomb'),
+    padConnected: on => UI.toast('🎮', BOTD.t(on ? 'pad_on' : 'pad_off'))
+  }, S.data.settings.keys);
+
+  // Reducir animaciones: lo elegido, o la preferencia del sistema si no se ha elegido
+  const systemReduce = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const reduceMotion = () => (S.data.settings.reduceMotion == null ? systemReduce() : S.data.settings.reduceMotion);
+
+  // Ajustes tal como se muestran (idioma efectivo y reducir animaciones efectivo)
+  const shownSettings = () => Object.assign({}, S.data.settings, { lang: BOTD.I18N.lang, reduceMotion: reduceMotion() });
+
+  // Música: pista del mundo y capa intensa en grandes oleadas o con jefe
+  function updateMusic() {
+    if (!game || state !== 'playing') return;
+    const bossAlive = game.zombies.some(z => !z.dead && BOTD.Zombies.isBoss(z.type));
+    A.setTrack(bossAlive ? 'boss' : A.trackFor(game.level));
+    const w = game.waves;
+    const bigNow = w && w.state === 'spawning' && L.isBig(game.level, w.index);
+    A.setIntensity(bossAlive || bigNow);
+  }
 
   // Lo que el jugador tiene desbloqueado según los niveles ganados
   function levelOptions() {
@@ -177,6 +196,8 @@
     Input.reset();
     A.init();
     A.stopMusic();
+    A.setTrack(A.trackFor(game.level));
+    A.setIntensity(false);
     A.startMusic();
   }
 
@@ -350,21 +371,53 @@
       /* ----- Ajustes ----- */
       case 'settings':
         settingsReturn = state === 'paused' ? 'pause' : 'menu';
-        UI.updateSettings(S.data.settings);
+        UI.updateSettings(shownSettings());
+        UI.buildKeys(Input.getBindings());
+        UI.setKeysMsg('');
         UI.setSaveCode('');
         UI.setSaveMsg('');
         UI.showScreen('settings');
         break;
       case 'settings-back':
+        Input.captureNext(null);
         if (settingsReturn === 'pause' && state === 'paused') UI.showScreen('pause');
         else toMenu();
         break;
       case 'setting':
         if (!arg || !(arg.key in S.data.settings)) break;
         S.data.settings[arg.key] = arg.value;
+        if (arg.key === 'lang') {
+          BOTD.setLang(arg.value);
+          UI.relocalize(S.data, L.count);
+          UI.buildKeys(Input.getBindings());
+        }
         applySettings();
-        UI.updateSettings(S.data.settings);
+        UI.updateSettings(shownSettings());
         S.save();
+        break;
+
+      /* ----- Teclas ----- */
+      case 'key-capture':
+        UI.buildKeys(Input.getBindings(), arg);
+        UI.setKeysMsg('');
+        Input.captureNext(code => {
+          if (!code) { UI.buildKeys(Input.getBindings()); return; }
+          const r = Input.rebind(Input.getBindings(), arg, code);
+          S.data.settings.keys = r.bindings;
+          Input.setBindings(r.bindings);
+          S.save();
+          UI.buildKeys(Input.getBindings());
+          UI.buildHowto();
+          if (r.movedFrom) UI.setKeysMsg(BOTD.t('key_moved', { k: Input.keyLabel(code), a: BOTD.t('act_' + r.movedFrom) }));
+        });
+        break;
+      case 'keys-reset':
+        S.data.settings.keys = {};
+        Input.setBindings(null);
+        S.save();
+        UI.buildKeys(Input.getBindings());
+        UI.buildHowto();
+        UI.setKeysMsg('');
         break;
       case 'stats': S.save(); UI.buildStats(S.data); UI.showScreen('stats'); break;
 
@@ -466,6 +519,13 @@
     A.setSfxVolume(s.sfxVol);
     A.setMusicVolume(s.musicVol);
     BOTD.Prefs.shake = s.shake;
+    // Accesibilidad
+    BOTD.Prefs.colorblind = s.colorblind;
+    BOTD.Prefs.textScale = s.bigText ? 1.2 : 1;
+    BOTD.Prefs.reduceMotion = reduceMotion();
+    document.body.classList.toggle('big-text', !!s.bigText);
+    document.body.classList.toggle('reduce-motion', BOTD.Prefs.reduceMotion);
+    if (game) UI.resetHud();   // redibujar las vistas previas (símbolos del modo daltónico)
     const low = s.quality === 'low';
     if (s.quality !== 'auto' || low) {
       if (BOTD.Quality.low !== low) { BOTD.Quality.low = low; lastFit = ''; }
@@ -508,7 +568,7 @@
     fpsTimer += dt;
     if (fpsTimer < 0.5) return;
     fpsTimer = 0;
-    fpsEl.textContent = Math.round(1000 / frameAvg) + ' FPS' + (BOTD.Quality.low ? ' · baja' : '') + ' · img ' + BOTD.Assets.cacheSize;
+    fpsEl.textContent = Math.round(1000 / frameAvg) + ' FPS' + (BOTD.Quality.low ? ' · ' + BOTD.t('q_low') : '') + ' · img ' + BOTD.Assets.cacheSize;
   }
 
   // Protección contra errores: un fallo no congela el juego; si se repite, se pausa con aviso
@@ -535,10 +595,11 @@
     lastT = now;
     if (state === 'crashed') return;       // esperando a que el jugador reinicie o vuelva al menú
     try {
+      Input.update(dt);   // siempre: así el mando también puede reanudar desde la pausa
       if ((state === 'playing' || state === 'ended') && game) {
         if (state === 'playing') {
-          Input.update(dt);
           S.data.totals.playTime += dt;   // tiempo jugado (se guarda al pausar, terminar o salir)
+          updateMusic();
         }
         acc += dt;
         let steps = 0;

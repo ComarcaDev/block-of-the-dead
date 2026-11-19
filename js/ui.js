@@ -57,6 +57,45 @@ BOTD.UI = (() => {
     });
   }
 
+  /* ---------- Teclas configurables ---------- */
+  const keyNames = codes => (codes && codes.length ? codes.map(BOTD.Input.keyLabel).join(' / ') : BOTD.t('key_none'));
+
+  function buildKeys(bindings, waiting) {
+    const list = $('keys-list');
+    list.innerHTML = '';
+    BOTD.Input.ACTIONS.forEach(a => {
+      const b = document.createElement('button');
+      b.className = 'key-row' + (waiting === a ? ' waiting' : '');
+      const name = document.createElement('span');
+      name.textContent = BOTD.t('act_' + a);
+      const kbd = document.createElement('kbd');
+      kbd.textContent = waiting === a ? BOTD.t('key_press') : keyNames(bindings[a]);
+      b.append(name, kbd);
+      b.addEventListener('click', () => fire('key-capture', a));
+      list.appendChild(b);
+    });
+  }
+
+  function setKeysMsg(text, ok) {
+    const m = $('keys-msg');
+    m.textContent = text || '';
+    m.className = 'set-msg' + (ok ? ' ok' : '');
+  }
+
+  // Vuelve a poner todos los textos en el idioma actual
+  function relocalize(data, count) {
+    BOTD.applyI18n(document);
+    $('version').textContent = 'v' + BOTD.VERSION;
+    document.querySelectorAll('[data-shop]').forEach(el => {
+      const cost = el.querySelector('.cost');
+      cost.innerHTML = '<img class="ico" alt="" src="' + BOTD.Assets.url('brain') + '">';
+      cost.appendChild(document.createTextNode(C.SHOP[el.dataset.shop]));
+    });
+    // applyI18n devuelve "Cargando…" al botón Jugar; si ya está todo listo, se recalcula el menú
+    if (BOTD.Assets.ready) { buildHowto(); buildPicker(); refreshMenu(data, count); }
+    last = {};
+  }
+
   function getSaveCode() { return $('save-code').value; }
   function setSaveCode(text) { $('save-code').value = text; }
   function setSaveMsg(key, ok) {
@@ -625,9 +664,17 @@ BOTD.UI = (() => {
     para(root, 'howto_more');
 
     section(root, 'howto_ctrl_title');
-    para(root, 'ctrl_keys');
+    // Controles de teclado según las teclas configuradas
+    const B = BOTD.Input.getBindings();
+    const keys = document.createElement('p');
+    keys.textContent = BOTD.t('ctrl_keys_dyn', {
+      list: BOTD.Input.ACTIONS.map(a => BOTD.t('act_' + a) + ': ' + keyNames(B[a])).join(' · ')
+    });
+    root.appendChild(keys);
     root.appendChild(document.createElement('br'));
     para(root, 'ctrl_touch');
+    root.appendChild(document.createElement('br'));
+    para(root, 'ctrl_pad');
   }
 
   // Se reconstruye al abrirlo para mostrar la defensa real de cada pieza en esta partida
@@ -654,6 +701,7 @@ BOTD.UI = (() => {
     updateToggles, flyBrains, buildPicker, showTip, hideTip,
     openLoadout, resetLoadout, getLoadout, buildAlmanac,
     buildShed, buildAchievements, toast,
-    updateSettings, getSaveCode, setSaveCode, setSaveMsg, buildStats
+    updateSettings, getSaveCode, setSaveCode, setSaveMsg, buildStats,
+    buildKeys, setKeysMsg, relocalize, buildHowto
   };
 })();

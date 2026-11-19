@@ -449,7 +449,7 @@ BOTD.Game = (() => {
 
   /* ---------- Efectos ---------- */
   function burst(g, x, y, color, n, power, shape) {
-    if (BOTD.Quality && BOTD.Quality.low) n = Math.ceil(n / 2);
+    if ((BOTD.Quality && BOTD.Quality.low) || (BOTD.Prefs && BOTD.Prefs.reduceMotion)) n = Math.ceil(n / 2);
     for (let i = 0; i < n; i++) {
       const life = 0.4 + Math.random() * 0.5;
       g.particles.push({

@@ -101,26 +101,86 @@ BOTD.Audio = (() => {
     if (f) f(arg);
   }
 
-  /* ---------- Música: bucle siniestro en La menor ---------- */
+  /* ---------- Música: una pista por mundo, con capa intensa en grandes oleadas y jefes ----------
+     Cada pista: 32 pasos de bajo y melodía (notas MIDI, 0 = silencio), duración del paso y timbres. */
   const midi = m => 440 * Math.pow(2, (m - 69) / 12);
-  const BASS = [45, 0, 45, 0, 48, 0, 45, 0, 43, 0, 43, 0, 47, 0, 43, 0, 45, 0, 45, 0, 48, 0, 50, 0, 52, 0, 50, 0, 48, 0, 47, 0];
-  const MEL = [69, 0, 0, 72, 0, 71, 0, 67, 0, 0, 69, 0, 0, 0, 0, 0, 69, 0, 0, 72, 0, 76, 0, 75, 0, 74, 0, 71, 0, 0, 0, 0];
-  const STEP_T = 0.2;
+  const TRACKS = {
+    // Jardín: alegre y saltarina (Do mayor)
+    garden: {
+      step: 0.18, bassType: 'triangle', melType: 'square',
+      bass: [48, 0, 55, 0, 48, 0, 55, 0, 53, 0, 57, 0, 53, 0, 57, 0, 50, 0, 57, 0, 50, 0, 57, 0, 55, 0, 59, 0, 55, 0, 62, 0],
+      mel: [72, 0, 76, 79, 0, 76, 0, 72, 77, 0, 0, 76, 74, 0, 0, 0, 74, 0, 77, 81, 0, 77, 0, 74, 79, 0, 0, 77, 76, 0, 74, 0]
+    },
+    // Noche: siniestra (La menor)
+    night: {
+      step: 0.2, bassType: 'triangle', melType: 'square',
+      bass: [45, 0, 45, 0, 48, 0, 45, 0, 43, 0, 43, 0, 47, 0, 43, 0, 45, 0, 45, 0, 48, 0, 50, 0, 52, 0, 50, 0, 48, 0, 47, 0],
+      mel: [69, 0, 0, 72, 0, 71, 0, 67, 0, 0, 69, 0, 0, 0, 0, 0, 69, 0, 0, 72, 0, 76, 0, 75, 0, 74, 0, 71, 0, 0, 0, 0]
+    },
+    // Cementerio: lenta y fantasmal (Re menor)
+    graveyard: {
+      step: 0.23, bassType: 'sine', melType: 'triangle',
+      bass: [38, 0, 0, 0, 45, 0, 0, 0, 41, 0, 0, 0, 40, 0, 0, 0, 38, 0, 0, 0, 46, 0, 0, 0, 45, 0, 0, 0, 44, 0, 0, 0],
+      mel: [74, 0, 0, 0, 77, 0, 76, 0, 0, 0, 74, 0, 0, 0, 0, 0, 74, 0, 0, 0, 82, 0, 81, 0, 0, 0, 80, 0, 81, 0, 0, 0]
+    },
+    // Supervivencia: insistente (Mi menor)
+    survival: {
+      step: 0.16, bassType: 'sawtooth', melType: 'square',
+      bass: [40, 40, 52, 40, 40, 52, 40, 47, 43, 43, 55, 43, 43, 55, 43, 50, 45, 45, 57, 45, 45, 57, 45, 52, 47, 47, 59, 47, 47, 59, 47, 54],
+      mel: [76, 0, 0, 79, 0, 0, 78, 0, 76, 0, 0, 0, 71, 0, 74, 0, 76, 0, 0, 79, 0, 0, 81, 0, 83, 0, 0, 0, 81, 0, 79, 0]
+    },
+    // Jefe: rápida y amenazante
+    boss: {
+      step: 0.14, bassType: 'sawtooth', melType: 'sawtooth',
+      bass: [33, 33, 45, 33, 33, 45, 33, 44, 33, 33, 45, 33, 36, 48, 35, 47, 33, 33, 45, 33, 33, 45, 33, 44, 38, 38, 50, 38, 40, 52, 39, 51],
+      mel: [69, 0, 70, 0, 69, 0, 0, 0, 72, 0, 70, 0, 69, 0, 68, 0, 69, 0, 70, 0, 69, 0, 0, 0, 75, 0, 74, 0, 72, 0, 70, 0]
+    }
+  };
+  let track = TRACKS.night, trackName = 'night', pendingTrack = null;
+  let intensity = 0;   // 0 normal · 1 gran oleada o jefe
+
+  // Pista según el nivel: supervivencia, cementerio, noche o jardín
+  function trackFor(level) {
+    if (!level) return 'garden';
+    if (level.endless) return 'survival';
+    if (level.ambient === 'graveyard') return 'graveyard';
+    if (level.ambient === 'night') return 'night';
+    return 'garden';
+  }
+
+  // Cambia de pista al empezar el siguiente compás (para que no se corte de golpe)
+  function setTrack(name) {
+    if (!TRACKS[name] || name === trackName) { pendingTrack = null; return; }
+    if (!musicTimer) { track = TRACKS[name]; trackName = name; pendingTrack = null; return; }
+    pendingTrack = name;
+  }
+
+  function setIntensity(v) { intensity = v ? 1 : 0; }
 
   function schedule() {
     while (nextNoteTime < ctx.currentTime + 0.25) {
-      const i = step % 32;
+      if (pendingTrack && step % 16 === 0) {
+        track = TRACKS[pendingTrack]; trackName = pendingTrack; pendingTrack = null;
+      }
+      const T = track, i = step % 32, st = T.step;
       const delay = Math.max(0, nextNoteTime - ctx.currentTime);
-      if (BASS[i]) tone(midi(BASS[i]), STEP_T * 1.6, { type: 'triangle', vol: 0.5, delay, dest: musicGain });
-      if (MEL[i] && step >= 32) tone(midi(MEL[i]), STEP_T * 1.3, { type: 'square', vol: 0.1, delay, dest: musicGain });
+      if (T.bass[i]) tone(midi(T.bass[i]), st * 1.6, { type: T.bassType, vol: T.bassType === 'sawtooth' ? 0.22 : 0.5, delay, dest: musicGain });
+      if (T.mel[i] && step >= 32) tone(midi(T.mel[i]), st * 1.3, { type: T.melType, vol: 0.1, delay, dest: musicGain });
       if (i % 4 === 2) noise(0.04, { vol: 0.08, freq: 6000, delay, dest: musicGain });
-      nextNoteTime += STEP_T;
+      // Capa intensa: bombo, platillo en cada paso y bajo una octava más alta
+      if (intensity) {
+        if (i % 4 === 0) tone(60, 0.12, { type: 'sine', vol: 0.5, slide: 35, delay, dest: musicGain });
+        noise(0.03, { vol: 0.05, freq: 9000, delay, dest: musicGain });
+        if (T.bass[i]) tone(midi(T.bass[i] + 12), st * 0.9, { type: 'square', vol: 0.06, delay, dest: musicGain });
+      }
+      nextNoteTime += st;
       step++;
     }
   }
 
   function startMusic() {
     if (!ctx || !musicOn || musicTimer) return;
+    if (pendingTrack) { track = TRACKS[pendingTrack]; trackName = pendingTrack; pendingTrack = null; }
     nextNoteTime = ctx.currentTime + 0.05;
     step = 0;
     musicTimer = setInterval(schedule, 50);
@@ -133,5 +193,9 @@ BOTD.Audio = (() => {
   function setSfx(v) { sfxOn = !!v; }
   function setMusic(v) { musicOn = !!v; if (!musicOn) stopMusic(); }
 
-  return { init, play, startMusic, stopMusic, setSfx, setMusic, setSfxVolume, setMusicVolume };
+  return {
+    init, play, startMusic, stopMusic, setSfx, setMusic, setSfxVolume, setMusicVolume,
+    TRACKS, trackFor, setTrack, setIntensity,
+    get trackName() { return pendingTrack || trackName; }, get intensity() { return intensity; }
+  };
 })();
