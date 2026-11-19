@@ -1,5 +1,7 @@
 # Block of the Dead
 
+[![Pruebas](https://github.com/ComarcaDev/block-of-the-dead/actions/workflows/tests.yml/badge.svg)](https://github.com/ComarcaDev/block-of-the-dead/actions/workflows/tests.yml)
+
 Juego de navegador que mezcla piezas que caen con defensa contra zombies. Las piezas que colocas se convierten en defensas. Los zombies llegan por la derecha y tienes que impedir que alcancen tu casa.
 
 ## Cómo ejecutarlo
@@ -20,11 +22,33 @@ Abre `tests.html` con doble clic. Comprueba las reglas del juego y el guardado, 
 
 Las pruebas usan sus propias claves de guardado, así que no tocan tu partida.
 
+En GitHub, las pruebas se ejecutan solas en cada subida (GitHub Actions, `.github/workflows/tests.yml`). Para ejecutarlas en local sin ventana hace falta Node.js:
+
+```
+npm install --no-save playwright
+npx playwright install chromium
+node ci/run-tests.mjs
+```
+
+## Ajustes, estadísticas y copias
+
+- **Ajustes** (menú o pausa):
+  - volumen de la música y de los efectos;
+  - calidad gráfica (automática, alta o baja);
+  - sacudidas de pantalla;
+  - contador de FPS.
+- **Estadísticas**: tiempo jugado, partidas, líneas por tipo, mejor combo y zombies derrotados por tipo.
+- **Copia de tu partida** (en Ajustes):
+  - **exportar**: crea un código para copiar o descarga un archivo `.json`;
+  - **importar**: pega el código o carga el archivo en otro dispositivo o navegador. Antes de reemplazar el progreso se comprueba que la copia esté completa y pide confirmación.
+
+Los cambios de cada versión están en [CHANGELOG.md](CHANGELOG.md).
+
 ## Estabilidad
 
 - **Errores**: si algo falla, el juego sigue funcionando. Si el fallo se repite, se detiene y muestra "Algo salió mal" con opciones para reiniciar o volver al menú.
 - **Efectos e imágenes**: hay un máximo de efectos e imágenes en memoria. Los límites están en `FX_LIMITS` dentro de `js/config.js`.
-- **Calidad automática**: si el equipo va lento, el juego baja la calidad solo. Con `?debug` aparece un contador de FPS abajo a la izquierda.
+- **Calidad automática**: si el equipo va lento, el juego baja la calidad solo, salvo que en Ajustes la hayas fijado en alta o baja. El contador de FPS aparece con `?debug` o activándolo en Ajustes.
 - **Guardado**: lleva número de versión y tiene una copia de seguridad (`botd_save_bak`). Si tenías progreso de una versión anterior, se conserva al actualizar.
 
 ## Cómo se juega
