@@ -80,11 +80,16 @@
 
   // Sucesos de la partida: estadísticas acumuladas y logros
   function onGameEvent(name, data) {
+    const T = S.data.totals;
     if (name === 'kill') {
-      S.data.totals.kills++;
+      T.kills++;
+      T.killsByType[data.type] = (T.killsByType[data.type] || 0) + 1;
       checkAchievements({ event: 'kill', type: data.type });
     } else if (name === 'lines') {
-      S.data.totals.lines += data.n;
+      T.lines += data.n;
+      const k = String(Math.min(4, data.n));
+      T.linesByCount[k] = (T.linesByCount[k] || 0) + 1;
+      T.bestCombo = Math.max(T.bestCombo, data.combo || 0);
       checkAchievements({ event: 'lines', n: data.n, combo: data.combo });
     } else if (name === 'wave') {
       checkAchievements({ event: 'wave', n: data.n, survival: data.survival });
@@ -129,6 +134,7 @@
       onSpawn: type => markSeen('zombies', type),
       onEvent: onGameEvent
     }, opts);
+    S.data.totals.games++;
     markDefensesSeen();
     if (game.level.graves) markSeen('defenses', 'grave');
     if (i === 0 && !S.data.tutorialDone) {
@@ -146,6 +152,7 @@
 
   function pause() {
     state = 'paused';
+    S.save();   // guarda estadísticas (tiempo jugado, etc.)
     A.stopMusic();
     Input.reset();
     UI.showScreen('pause');
@@ -167,6 +174,7 @@
     game = null;
     errorStreak = 0;
     BOTD.Tutorial.cancel();
+    S.save();
     A.stopMusic();
     UI.refreshMenu(S.data, L.count);
     UI.showScreen('menu');
@@ -199,6 +207,7 @@
     let newBest = false, newDefense = null, bankGain = 0;
     if (result.won) {
       A.play('win');
+      S.data.totals.wins++;
       const firstWin = num >= S.data.unlocked;   // ¿es la primera vez que se gana este nivel?
       if (firstWin) newDefense = L.unlockAt(num);
       S.unlock(Math.min(L.count, num + 1));
@@ -285,7 +294,75 @@
         break;
       case 'picker-cancel': if (state === 'picker') closePicker(); break;
       case 'tut-skip': BOTD.Tutorial.skip(); break;
+
+      /* ----- Ajustes ----- */
+      case 'settings':
+        settingsReturn = state === 'paused' ? 'pause' : 'menu';
+        UI.updateSettings(S.data.settings);
+        UI.setSaveCode('');
+        UI.setSaveMsg('');
+        UI.showScreen('settings');
+        break;
+      case 'settings-back':
+        if (settingsReturn === 'pause' && state === 'paused') UI.showScreen('pause');
+        else toMenu();
+        break;
+      case 'setting':
+        if (!arg || !(arg.key in S.data.settings)) break;
+        S.data.settings[arg.key] = arg.value;
+        applySettings();
+        UI.updateSettings(S.data.settings);
+        S.save();
+        break;
+      case 'stats': S.save(); UI.buildStats(S.data); UI.showScreen('stats'); break;
+
+      /* ----- Exportar / importar partida ----- */
+      case 'export-copy': {
+        const code = S.exportCode();
+        UI.setSaveCode(code);
+        copyText(code).then(ok => UI.setSaveMsg(ok ? 'export_copied' : 'export_shown', true));
+        break;
+      }
+      case 'export-file': {
+        const blob = new Blob([S.exportJson()], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'block-of-the-dead-partida.json';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+        UI.setSaveMsg('export_saved', true);
+        break;
+      }
+      case 'import-code': handleImport(UI.getSaveCode()); break;
+      case 'import-file': document.getElementById('import-file').click(); break;
+      case 'import-text': handleImport(arg); break;
     }
+  }
+
+  let settingsReturn = 'menu';
+
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).then(() => true, () => fallbackCopy());
+    }
+    return Promise.resolve(fallbackCopy());
+  }
+
+  function fallbackCopy() {
+    const ta = document.getElementById('save-code');
+    ta.focus();
+    ta.select();
+    try { return document.execCommand('copy'); } catch (e) { return false; }
+  }
+
+  function handleImport(text) {
+    const r = S.importCode(text);
+    if (!r.ok) { A.play('deny'); UI.setSaveMsg(r.error, false); return; }
+    if (!window.confirm(BOTD.t('import_confirm'))) return;
+    S.replace(r.data);
+    UI.setSaveMsg('import_ok', true);
+    setTimeout(() => location.reload(), 900);   // recargar para aplicar todo el progreso importado
   }
 
   // Atajos de depuración (abrir index.html?debug): K mata zombies, B +100 cerebros, N gana el nivel
@@ -298,8 +375,11 @@
     });
   }
 
-  // Pausa automática al cambiar de pestaña
-  document.addEventListener('visibilitychange', () => { if (document.hidden && canPlay()) pause(); });
+  // Pausa automática al cambiar de pestaña (y se guardan las estadísticas)
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) return;
+    if (canPlay()) pause(); else S.save();
+  });
 
   // Ajustar el lienzo al espacio disponible
   const stage = document.getElementById('stage');
@@ -325,33 +405,54 @@
   window.addEventListener('resize', fit);
   document.addEventListener('fullscreenchange', fit);
   if (window.ResizeObserver) new ResizeObserver(fit).observe(stage);
-  fit();
+
+  // Aplica los ajustes guardados (volúmenes, calidad, sacudidas)
+  function applySettings() {
+    const s = S.data.settings;
+    A.setSfx(s.sfx);
+    A.setMusic(s.music);
+    A.setSfxVolume(s.sfxVol);
+    A.setMusicVolume(s.musicVol);
+    BOTD.Prefs.shake = s.shake;
+    const low = s.quality === 'low';
+    if (s.quality !== 'auto' || low) {
+      if (BOTD.Quality.low !== low) { BOTD.Quality.low = low; lastFit = ''; }
+    } else if (BOTD.Quality.low && !autoLowered) {
+      BOTD.Quality.low = false;
+      lastFit = '';
+    }
+    UI.updateToggles(s);
+    fit();
+  }
+  let autoLowered = false;   // true si la calidad automática ya bajó la calidad en esta sesión
+  applySettings();
 
   // Calidad automática: si el equipo va lento de forma sostenida, se baja la calidad una vez
   let frameAvg = 16.7, slowTime = 0;
   function watchPerformance(rawMs, dt) {
     if (rawMs > 100 || document.hidden) return;      // pausas o pestaña oculta: no cuentan
     frameAvg += (rawMs - frameAvg) * 0.05;
+    if (S.data.settings.quality !== 'auto') return;  // calidad fijada a mano en los ajustes
     if (BOTD.Quality.low || state !== 'playing') { slowTime = 0; return; }
     slowTime = frameAvg > P.SLOW_FRAME_MS ? slowTime + dt : 0;
     if (slowTime >= P.SLOW_SECONDS) {
       BOTD.Quality.low = true;
+      autoLowered = true;
       console.info('[Block of the Dead] Rendimiento bajo: se activa la calidad baja.');
       lastFit = '';
       fit();
     }
   }
 
-  // Contador de FPS (solo con ?debug)
-  let fpsEl = null;
-  if (DEBUG) {
-    fpsEl = document.createElement('div');
-    fpsEl.className = 'fps-meter';
-    document.body.appendChild(fpsEl);
-  }
+  // Contador de FPS (con ?debug o activado en los ajustes)
+  const fpsEl = document.createElement('div');
+  fpsEl.className = 'fps-meter';
+  document.body.appendChild(fpsEl);
   let fpsTimer = 0;
   function showFps(dt) {
-    if (!fpsEl) return;
+    const on = DEBUG || S.data.settings.showFps;
+    fpsEl.style.display = on ? '' : 'none';
+    if (!on) return;
     fpsTimer += dt;
     if (fpsTimer < 0.5) return;
     fpsTimer = 0;
@@ -383,7 +484,10 @@
     if (state === 'crashed') return;       // esperando a que el jugador reinicie o vuelva al menú
     try {
       if ((state === 'playing' || state === 'ended') && game) {
-        if (state === 'playing') Input.update(dt);
+        if (state === 'playing') {
+          Input.update(dt);
+          S.data.totals.playTime += dt;   // tiempo jugado (se guarda al pausar, terminar o salir)
+        }
         acc += dt;
         let steps = 0;
         while (acc >= STEP && steps < 8) {

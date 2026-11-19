@@ -698,7 +698,7 @@ BOTD.Render = (() => {
     c.imageSmoothingEnabled = true;
     c.drawImage(background(g.level.ambient, g.level.lanes), 0, 0);
     c.setTransform(S, 0, 0, S, 0, -VIEW_TOP * S);
-    if (g.shake > 0) {
+    if (g.shake > 0 && BOTD.Prefs.shake) {
       const m = g.shake * 14;
       c.translate((Math.random() - 0.5) * m, (Math.random() - 0.5) * m);
     }

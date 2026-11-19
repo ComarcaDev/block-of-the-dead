@@ -581,6 +581,75 @@ button { font-family: var(--text); font-weight: 700; color: var(--cream); cursor
   .alm-body { grid-template-columns: 1fr; }
 }
 
+/* ---------- Versión ---------- */
+.version { margin: 12px 0 0; font-size: 12px; color: var(--muted); opacity: .8; }
+
+/* ---------- Ajustes ---------- */
+.settings { text-align: left; }
+.settings h3, .stats-body h3 {
+  margin: 14px 0 6px;
+  font-family: var(--title);
+  font-weight: normal;
+  font-size: 19px;
+  color: #9dff6a;
+  text-shadow: 0 2px 0 var(--ink);
+}
+.set-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  font-size: 15px;
+  background: rgba(60, 28, 8, .42);
+  border-radius: 12px;
+  cursor: pointer;
+}
+.set-row > span { flex: 1; }
+.set-row output { min-width: 48px; text-align: right; font-family: var(--title); color: var(--yellow); }
+.set-row input[type=range] { width: 42%; accent-color: #7ee35a; cursor: pointer; }
+.set-row input[type=checkbox] { width: 22px; height: 22px; accent-color: #7ee35a; cursor: pointer; }
+.seg { display: inline-flex; border: 3px solid var(--ink); border-radius: 10px; overflow: hidden; }
+.seg button {
+  padding: 5px 10px;
+  font-size: 13px;
+  color: var(--ink);
+  background: #f1d9a4;
+  border: 0;
+  border-left: 2px solid var(--ink);
+}
+.seg button:first-child { border-left: 0; }
+.seg button.selected { color: #fff; background: #45a32c; text-shadow: 0 1px 0 var(--ink); }
+.set-hint { margin: 0 0 8px; font-size: 13px; color: var(--muted); }
+.set-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
+.save-code {
+  width: 100%;
+  padding: 8px;
+  font: 12px/1.4 ui-monospace, Consolas, monospace;
+  color: var(--ink);
+  background: #fff6dc;
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  resize: vertical;
+}
+.set-msg { min-height: 1.2em; margin: 6px 0 0; font-size: 14px; }
+.set-msg.ok { color: #b8ff8f; }
+.set-msg.bad { color: #ffb0b0; }
+
+/* ---------- Estadísticas ---------- */
+.stats-body { text-align: left; }
+.stats-body dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  margin: 0;
+  padding: 8px 12px;
+  background: rgba(60, 28, 8, .42);
+  border-radius: 12px;
+}
+.stats-body dt { font-size: 15px; }
+.stats-body dd { margin: 0; font-family: var(--title); font-size: 17px; color: var(--yellow); text-align: right; }
+
 /* ---------- Menú en cuadrícula ---------- */
 .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .menu-grid .btn { padding: 10px 8px; font-size: 17px; }

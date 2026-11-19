@@ -98,6 +98,52 @@ BOTD.I18N = {
       z_boss: 'Gigante',
       z_boss_d: 'Enorme. Aplasta bloques de un golpe.',
 
+      menu_settings: 'Ajustes',
+      menu_stats: 'Estadísticas',
+      set_sound: 'Sonido',
+      set_music_vol: 'Volumen de la música',
+      set_sfx_vol: 'Volumen de los efectos',
+      set_graphics: 'Gráficos',
+      set_quality: 'Calidad',
+      q_auto: 'Automática',
+      q_high: 'Alta',
+      q_low: 'Baja',
+      set_shake: 'Sacudidas de pantalla',
+      set_fps: 'Mostrar FPS',
+      set_save: 'Copia de tu partida',
+      set_save_hint: 'Exporta tu progreso para pasarlo a otro dispositivo o navegador, o importa una copia.',
+      export_copy: 'Copiar código',
+      export_file: 'Descargar archivo',
+      import_code: 'Importar código',
+      import_file: 'Importar archivo',
+      import_placeholder: 'Pega aquí un código de partida (BOTD1:…)',
+      export_copied: 'Código copiado. Pégalo en el otro dispositivo, en Ajustes → Importar código.',
+      export_shown: 'Código generado: cópialo desde el recuadro.',
+      export_saved: 'Archivo descargado.',
+      import_bad: 'No es un código ni un archivo de partida válido.',
+      import_corrupt: 'La copia está incompleta o modificada; no se ha importado.',
+      import_confirm: '¿Reemplazar tu progreso actual por el de esta copia? No se puede deshacer.',
+      import_ok: 'Partida importada. Recargando…',
+
+      st_general: 'General',
+      st_time: 'Tiempo jugado',
+      st_games: 'Partidas',
+      st_wins: 'Niveles ganados',
+      st_levels: 'Niveles completados',
+      st_survival: 'Récord de supervivencia (oleadas)',
+      st_bank: 'Cerebros guardados',
+      st_lines: 'Líneas',
+      st_lines_total: 'Total de líneas',
+      st_l1: 'Sencillas',
+      st_l2: 'Dobles',
+      st_l3: 'Triples',
+      st_l4: 'Cuádruples',
+      st_combo: 'Mejor combo',
+      st_kills: 'Zombies derrotados',
+      st_kills_total: 'Total',
+      time_hm: '{h} h {m} min',
+      time_m: '{m} min',
+
       fx_combo: '¡Combo x{n}!',
       result_combo: 'Mejor combo: x{n}',
       spare_roller: '¡Rodillo de reserva!',
@@ -266,6 +312,7 @@ BOTD.t = function (key, vars) {
 BOTD.applyI18n = function (root) {
   const r = root || document;
   r.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = BOTD.t(el.dataset.i18n); });
+  r.querySelectorAll('[data-i18n-placeholder]').forEach(el => { el.placeholder = BOTD.t(el.dataset.i18nPlaceholder); });
   r.querySelectorAll('[data-i18n-aria]').forEach(el => {
     const txt = BOTD.t(el.dataset.i18nAria);
     el.setAttribute('aria-label', txt);

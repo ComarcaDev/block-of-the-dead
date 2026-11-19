@@ -87,5 +87,11 @@ BOTD.CONFIG = {
   MAX_CONSECUTIVE_ERRORS: 5
 };
 
-// Estado de calidad en tiempo de ejecución (lo cambia main.js si el equipo va lento)
+// Versión del juego (se muestra en el menú y se usa en las copias exportadas)
+BOTD.VERSION = '1.1.0';
+
+// Estado de calidad en tiempo de ejecución (lo cambia main.js si el equipo va lento o según los ajustes)
 BOTD.Quality = { low: false };
+
+// Preferencias visuales en tiempo de ejecución (las fija main.js desde los ajustes)
+BOTD.Prefs = { shake: true };

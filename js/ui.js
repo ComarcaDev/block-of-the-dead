@@ -9,8 +9,100 @@ BOTD.UI = (() => {
 
   function fire(cmd, arg) {
     BOTD.Audio.init();
-    if (cmd !== 'shop') BOTD.Audio.play('click');
+    if (cmd !== 'shop' && cmd !== 'setting') BOTD.Audio.play('click');
     onCommand(cmd, arg);
+  }
+
+  // Controles de la pantalla de ajustes
+  function initSettings() {
+    document.querySelectorAll('input[type=range][data-setting]').forEach(el => {
+      el.addEventListener('input', () => {
+        const v = Number(el.value) / 100;
+        const out = document.querySelector('[data-out="' + el.dataset.setting + '"]');
+        if (out) out.textContent = el.value + ' %';
+        fire('setting', { key: el.dataset.setting, value: v });
+      });
+      // Al soltar, un pitido de prueba para oír el volumen de efectos
+      el.addEventListener('change', () => { if (el.dataset.setting === 'sfxVol') BOTD.Audio.play('click'); });
+    });
+    document.querySelectorAll('input[type=checkbox][data-setting]').forEach(el => {
+      el.addEventListener('change', () => fire('setting', { key: el.dataset.setting, value: el.checked }));
+    });
+    document.querySelectorAll('.seg[data-setting] button').forEach(b => {
+      b.addEventListener('click', () => {
+        BOTD.Audio.play('click');
+        fire('setting', { key: b.parentElement.dataset.setting, value: b.dataset.value });
+      });
+    });
+    $('import-file').addEventListener('change', e => {
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
+      const r = new FileReader();
+      r.onload = () => fire('import-text', String(r.result || ''));
+      r.readAsText(f);
+      e.target.value = '';
+    });
+  }
+
+  function updateSettings(s) {
+    document.querySelectorAll('input[type=range][data-setting]').forEach(el => {
+      const pct = Math.round((s[el.dataset.setting] || 0) * 100);
+      el.value = pct;
+      const out = document.querySelector('[data-out="' + el.dataset.setting + '"]');
+      if (out) out.textContent = pct + ' %';
+    });
+    document.querySelectorAll('input[type=checkbox][data-setting]').forEach(el => { el.checked = !!s[el.dataset.setting]; });
+    document.querySelectorAll('.seg[data-setting]').forEach(seg => {
+      seg.querySelectorAll('button').forEach(b => b.classList.toggle('selected', s[seg.dataset.setting] === b.dataset.value));
+    });
+  }
+
+  function getSaveCode() { return $('save-code').value; }
+  function setSaveCode(text) { $('save-code').value = text; }
+  function setSaveMsg(key, ok) {
+    const m = $('save-msg');
+    m.textContent = key ? BOTD.t(key) : '';
+    m.className = 'set-msg' + (ok ? ' ok' : ok === false ? ' bad' : '');
+  }
+
+  /* ---------- Estadísticas ---------- */
+  function fmtTime(sec) {
+    const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
+    return h ? BOTD.t('time_hm', { h, m }) : BOTD.t('time_m', { m: Math.max(0, m) });
+  }
+
+  function buildStats(data) {
+    const T = data.totals;
+    const body = $('stats-body');
+    body.innerHTML = '';
+    const sec = (titleKey, rows) => {
+      const h = document.createElement('h3'); h.textContent = BOTD.t(titleKey);
+      const dl = document.createElement('dl');
+      rows.forEach(([k, v]) => {
+        const dt = document.createElement('dt'); dt.textContent = k;
+        const dd = document.createElement('dd'); dd.textContent = v;
+        dl.append(dt, dd);
+      });
+      body.append(h, dl);
+    };
+    const lc = n => T.linesByCount[n] || 0;
+    sec('st_general', [
+      [BOTD.t('st_time'), fmtTime(T.playTime)],
+      [BOTD.t('st_games'), T.games],
+      [BOTD.t('st_wins'), T.wins],
+      [BOTD.t('st_levels'), Math.max(0, Math.min(BOTD.Levels.count, data.unlocked - 1)) + ' / ' + BOTD.Levels.count],
+      [BOTD.t('st_survival'), data.survival.bestWave],
+      [BOTD.t('st_bank'), data.bank]
+    ]);
+    sec('st_lines', [
+      [BOTD.t('st_lines_total'), T.lines],
+      [BOTD.t('st_l1'), lc(1)], [BOTD.t('st_l2'), lc(2)], [BOTD.t('st_l3'), lc(3)], [BOTD.t('st_l4'), lc(4)],
+      [BOTD.t('st_combo'), T.bestCombo ? 'x' + T.bestCombo : '—']
+    ]);
+    const kills = Object.keys(T.killsByType).sort((a, b) => T.killsByType[b] - T.killsByType[a]);
+    sec('st_kills', [[BOTD.t('st_kills_total'), T.kills]].concat(
+      kills.map(k => [BOTD.t('z_' + k), T.killsByType[k]])
+    ));
   }
 
   function init(handler) {
@@ -27,6 +119,8 @@ BOTD.UI = (() => {
     });
     const fsOk = document.fullscreenEnabled || document.webkitFullscreenEnabled;
     document.body.classList.toggle('no-fs', !fsOk);
+    $('version').textContent = 'v' + BOTD.VERSION;
+    initSettings();
   }
 
   // Se llama cuando las imágenes ya están cargadas
@@ -517,6 +611,7 @@ BOTD.UI = (() => {
     init, setReady, showScreen, refreshMenu, buildLevels, showResult, updateHud, resetHud,
     updateToggles, flyBrains, buildPicker, showTip, hideTip,
     openLoadout, resetLoadout, getLoadout, buildAlmanac,
-    buildShed, buildAchievements, toast
+    buildShed, buildAchievements, toast,
+    updateSettings, getSaveCode, setSaveCode, setSaveMsg, buildStats
   };
 })();

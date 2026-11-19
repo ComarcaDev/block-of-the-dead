@@ -14,8 +14,13 @@ BOTD.Storage = (() => {
       v: VERSION,
       unlocked: 1,
       best: {},
-      settings: { sfx: true, music: true },
-      // Campos preparados para las próximas fases
+      settings: {
+        sfx: true, music: true,            // sonido y música activados
+        sfxVol: 0.8, musicVol: 0.8,        // volúmenes (0–1)
+        quality: 'auto',                   // 'auto' | 'high' | 'low'
+        shake: true,                       // sacudidas de pantalla
+        showFps: false                     // contador de FPS
+      },
       loadout: {},                         // defensa elegida para cada pieza
       upgrades: {},                        // mejoras permanentes compradas
       bank: 0,                             // cerebros guardados para el cobertizo
@@ -23,7 +28,12 @@ BOTD.Storage = (() => {
       almanac: { defenses: {}, zombies: {} },
       tutorialDone: false,
       survival: { bestWave: 0, bestScore: 0 },
-      totals: { kills: 0, lines: 0 }       // estadísticas acumuladas (para logros)
+      // Estadísticas acumuladas (logros y pantalla de estadísticas)
+      totals: {
+        kills: 0, lines: 0, playTime: 0, games: 0, wins: 0, bestCombo: 0,
+        linesByCount: {},                  // { '1': sencillas, '2': dobles, '3': triples, '4': cuádruples }
+        killsByType: {}                    // { basic: n, cone: n, ... }
+      }
     };
   }
 
@@ -55,8 +65,14 @@ BOTD.Storage = (() => {
     out.unlocked = Math.round(num(d.unlocked, 1, 1, 99));
     out.best = numMap(d.best);
     if (isObj(d.settings)) {
-      out.settings.sfx = bool(d.settings.sfx, true);
-      out.settings.music = bool(d.settings.music, true);
+      const s = d.settings;
+      out.settings.sfx = bool(s.sfx, true);
+      out.settings.music = bool(s.music, true);
+      out.settings.sfxVol = num(s.sfxVol, 0.8, 0, 1);
+      out.settings.musicVol = num(s.musicVol, 0.8, 0, 1);
+      out.settings.quality = ['auto', 'high', 'low'].includes(s.quality) ? s.quality : 'auto';
+      out.settings.shake = bool(s.shake, true);
+      out.settings.showFps = bool(s.showFps, false);
     }
     out.loadout = strMap(d.loadout);
     out.upgrades = numMap(d.upgrades);
@@ -72,10 +88,79 @@ BOTD.Storage = (() => {
       out.survival.bestScore = Math.round(num(d.survival.bestScore, 0, 0, 1e12));
     }
     if (isObj(d.totals)) {
-      out.totals.kills = Math.round(num(d.totals.kills, 0, 0, 1e9));
-      out.totals.lines = Math.round(num(d.totals.lines, 0, 0, 1e9));
+      const t = d.totals;
+      out.totals.kills = Math.round(num(t.kills, 0, 0, 1e9));
+      out.totals.lines = Math.round(num(t.lines, 0, 0, 1e9));
+      out.totals.playTime = num(t.playTime, 0, 0, 1e9);
+      out.totals.games = Math.round(num(t.games, 0, 0, 1e9));
+      out.totals.wins = Math.round(num(t.wins, 0, 0, 1e9));
+      out.totals.bestCombo = Math.round(num(t.bestCombo, 0, 0, 1e6));
+      out.totals.linesByCount = numMap(t.linesByCount);
+      out.totals.killsByType = numMap(t.killsByType);
     }
     return out;
+  }
+
+  /* ---------- Exportar / importar partida ----------
+     Código: 'BOTD1:' + base64( JSON { p: { app, version, data }, h: hash(p) } ) */
+  const CODE_PREFIX = 'BOTD1:';
+
+  // Hash FNV-1a de 32 bits (comprobación de integridad, no seguridad)
+  function hash(str) {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    return h.toString(16);
+  }
+
+  function toBase64(str) {
+    const bytes = new TextEncoder().encode(str);
+    let bin = '';
+    bytes.forEach(b => { bin += String.fromCharCode(b); });
+    return btoa(bin);
+  }
+
+  function fromBase64(b64) {
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+
+  // Contenido del archivo exportado (JSON legible con comprobación de integridad)
+  function exportJson(d) {
+    const p = JSON.stringify({ app: 'block-of-the-dead', version: BOTD.VERSION, exported: new Date().toISOString(), data: d || data });
+    return JSON.stringify({ p, h: hash(p) });
+  }
+
+  // Código corto para copiar y pegar
+  function exportCode(d) {
+    return CODE_PREFIX + toBase64(exportJson(d));
+  }
+
+  // Acepta el código o el contenido del archivo exportado.
+  // Devuelve { ok: true, data } o { ok: false, error: 'clave de texto' }. No modifica nada.
+  function importCode(text) {
+    try {
+      let s = String(text || '').trim();
+      if (s.startsWith(CODE_PREFIX)) s = s.slice(CODE_PREFIX.length);
+      const wrapper = JSON.parse(s.startsWith('{') ? s : fromBase64(s.replace(/\s+/g, '')));
+      if (!isObj(wrapper) || typeof wrapper.p !== 'string') return { ok: false, error: 'import_bad' };
+      if (hash(wrapper.p) !== wrapper.h) return { ok: false, error: 'import_corrupt' };
+      const p = JSON.parse(wrapper.p);
+      if (!isObj(p) || p.app !== 'block-of-the-dead' || !isObj(p.data)) return { ok: false, error: 'import_bad' };
+      return { ok: true, data: sanitize(p.data), version: p.version };
+    } catch (e) {
+      return { ok: false, error: 'import_bad' };
+    }
+  }
+
+  // Sustituye el progreso por uno importado (ya validado)
+  function replace(d) {
+    data = sanitize(d);
+    save();
   }
 
   // Formato v1: { unlocked, best, settings } → se conserva el progreso
@@ -138,6 +223,7 @@ BOTD.Storage = (() => {
 
   return {
     VERSION, load, save, unlock, setBest, sanitize, setPrefix, keys,
+    exportCode, exportJson, importCode, replace, hash,
     get data() { return data; }
   };
 })();

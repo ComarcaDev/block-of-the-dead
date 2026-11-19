@@ -4,6 +4,8 @@ window.BOTD = window.BOTD || {};
 BOTD.Audio = (() => {
   let ctx = null, master, sfxGain, musicGain, noiseBuf = null;
   let sfxOn = true, musicOn = true;
+  let sfxVol = 0.8, musicVol = 0.8;     // volúmenes elegidos en ajustes (0–1)
+  const MUSIC_BASE = 0.22;              // la música suena más baja que los efectos
   let musicTimer = null, nextNoteTime = 0, step = 0;
 
   function init() {
@@ -12,8 +14,18 @@ BOTD.Audio = (() => {
     if (!AC) return;
     ctx = new AC();
     master = ctx.createGain(); master.gain.value = 0.6; master.connect(ctx.destination);
-    sfxGain = ctx.createGain(); sfxGain.connect(master);
-    musicGain = ctx.createGain(); musicGain.gain.value = 0.22; musicGain.connect(master);
+    sfxGain = ctx.createGain(); sfxGain.gain.value = sfxVol; sfxGain.connect(master);
+    musicGain = ctx.createGain(); musicGain.gain.value = MUSIC_BASE * musicVol; musicGain.connect(master);
+  }
+
+  function setSfxVolume(v) {
+    sfxVol = Math.max(0, Math.min(1, v));
+    if (sfxGain) sfxGain.gain.value = sfxVol;
+  }
+
+  function setMusicVolume(v) {
+    musicVol = Math.max(0, Math.min(1, v));
+    if (musicGain) musicGain.gain.value = MUSIC_BASE * musicVol;
   }
 
   function tone(freq, dur, o = {}) {
@@ -120,5 +132,5 @@ BOTD.Audio = (() => {
   function setSfx(v) { sfxOn = !!v; }
   function setMusic(v) { musicOn = !!v; if (!musicOn) stopMusic(); }
 
-  return { init, play, startMusic, stopMusic, setSfx, setMusic };
+  return { init, play, startMusic, stopMusic, setSfx, setMusic, setSfxVolume, setMusicVolume };
 })();

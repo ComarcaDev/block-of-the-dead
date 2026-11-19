@@ -75,13 +75,72 @@
             <button class="btn" data-cmd="achievements" data-i18n="menu_achievements"></button>
             <button class="btn" data-cmd="almanac" data-i18n="menu_almanac"></button>
             <button class="btn" data-cmd="howto" data-i18n="menu_howto"></button>
-          </div>
-          <div class="toggles">
-            <button class="btn small tg-sfx" data-cmd="sfx"></button>
-            <button class="btn small tg-music" data-cmd="music"></button>
+            <button class="btn" data-cmd="stats" data-i18n="menu_stats"></button>
+            <button class="btn" data-cmd="settings" data-i18n="menu_settings"></button>
           </div>
           <button class="btn small fs-btn" data-cmd="fullscreen" data-i18n="fullscreen"></button>
         </div>
+        <p class="version" id="version"></p>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-settings">
+      <div class="card wood">
+        <h2 data-i18n="menu_settings"></h2>
+        <div class="settings">
+          <h3 data-i18n="set_sound"></h3>
+          <label class="set-row">
+            <span data-i18n="set_music_vol"></span>
+            <input type="range" min="0" max="100" step="5" data-setting="musicVol">
+            <output data-out="musicVol"></output>
+          </label>
+          <label class="set-row">
+            <span data-i18n="set_sfx_vol"></span>
+            <input type="range" min="0" max="100" step="5" data-setting="sfxVol">
+            <output data-out="sfxVol"></output>
+          </label>
+
+          <h3 data-i18n="set_graphics"></h3>
+          <div class="set-row">
+            <span data-i18n="set_quality"></span>
+            <div class="seg" data-setting="quality">
+              <button data-value="auto" data-i18n="q_auto"></button>
+              <button data-value="high" data-i18n="q_high"></button>
+              <button data-value="low" data-i18n="q_low"></button>
+            </div>
+          </div>
+          <label class="set-row">
+            <span data-i18n="set_shake"></span>
+            <input type="checkbox" data-setting="shake">
+          </label>
+          <label class="set-row">
+            <span data-i18n="set_fps"></span>
+            <input type="checkbox" data-setting="showFps">
+          </label>
+
+          <h3 data-i18n="set_save"></h3>
+          <p class="set-hint" data-i18n="set_save_hint"></p>
+          <div class="set-actions">
+            <button class="btn small" data-cmd="export-copy" data-i18n="export_copy"></button>
+            <button class="btn small" data-cmd="export-file" data-i18n="export_file"></button>
+          </div>
+          <textarea id="save-code" class="save-code" rows="3" spellcheck="false" data-i18n-placeholder="import_placeholder"></textarea>
+          <div class="set-actions">
+            <button class="btn small" data-cmd="import-code" data-i18n="import_code"></button>
+            <button class="btn small" data-cmd="import-file" data-i18n="import_file"></button>
+            <input type="file" id="import-file" accept=".json,.txt,application/json,text/plain" hidden>
+          </div>
+          <p class="set-msg" id="save-msg" role="status"></p>
+        </div>
+        <button class="btn" data-cmd="settings-back" data-i18n="back"></button>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-stats">
+      <div class="card wood">
+        <h2 data-i18n="menu_stats"></h2>
+        <div id="stats-body" class="stats-body"></div>
+        <button class="btn" data-cmd="back" data-i18n="back"></button>
       </div>
     </section>
 
@@ -155,10 +214,9 @@
           <button class="btn primary" data-cmd="resume" data-i18n="resume"></button>
           <button class="btn" data-cmd="restart" data-i18n="restart"></button>
           <div class="toggles">
-            <button class="btn small tg-sfx" data-cmd="sfx"></button>
-            <button class="btn small tg-music" data-cmd="music"></button>
+            <button class="btn small" data-cmd="settings" data-i18n="menu_settings"></button>
+            <button class="btn small fs-btn" data-cmd="fullscreen" data-i18n="fullscreen"></button>
           </div>
-          <button class="btn small fs-btn" data-cmd="fullscreen" data-i18n="fullscreen"></button>
           <button class="btn" data-cmd="menu" data-i18n="to_menu"></button>
         </div>
       </div>
