@@ -635,6 +635,75 @@
     });
   });
 
+  /* ---------- v1.1: versión, ajustes, estadísticas, exportar/importar ---------- */
+  test('Versión: tiene formato X.Y.Z', () => {
+    assert(/^\d+\.\d+\.\d+$/.test(BOTD.VERSION), 'Versión: ' + BOTD.VERSION);
+  });
+
+  test('Ajustes: valores por defecto y valores absurdos corregidos', () => {
+    const d = S.sanitize({});
+    assert(d.settings.musicVol === 0.8 && d.settings.sfxVol === 0.8 && d.settings.quality === 'auto', JSON.stringify(d.settings));
+    assert(d.settings.shake === true && d.settings.showFps === false, 'Sacudidas y FPS');
+    const bad = S.sanitize({ settings: { musicVol: 7, sfxVol: -1, quality: 'ultra', shake: 'no', showFps: 1 } });
+    assert(bad.settings.musicVol === 1 && bad.settings.sfxVol === 0, 'Volúmenes acotados');
+    assert(bad.settings.quality === 'auto' && bad.settings.shake === true && bad.settings.showFps === false, JSON.stringify(bad.settings));
+  });
+
+  test('Ajustes: un guardado de la v1.0 conserva sonido y música', () => {
+    const d = S.sanitize({ v: 2, unlocked: 4, settings: { sfx: false, music: true } });
+    assert(d.unlocked === 4 && d.settings.sfx === false && d.settings.music === true && d.settings.sfxVol === 0.8, JSON.stringify(d.settings));
+  });
+
+  test('Estadísticas: se guardan y se validan', () => {
+    const d = S.sanitize({ totals: { kills: 12, playTime: 95.5, games: 3, wins: 2, bestCombo: 4,
+      linesByCount: { 1: 5, 4: 'x' }, killsByType: { basic: 9, cone: 3 } } });
+    const T = d.totals;
+    assert(T.kills === 12 && T.playTime === 95.5 && T.games === 3 && T.wins === 2 && T.bestCombo === 4, JSON.stringify(T));
+    assert(T.linesByCount[1] === 5 && !('4' in T.linesByCount), 'Líneas por tipo');
+    assert(T.killsByType.basic === 9 && T.killsByType.cone === 3, 'Zombies por tipo');
+  });
+
+  test('Exportar/importar: el código y el archivo recuperan la partida', () => {
+    const d = S.sanitize({ unlocked: 7, bank: 321, best: { 3: 999 }, achievements: { tetra: true },
+      settings: { musicVol: 0.3 }, totals: { kills: 50 } });
+    const code = S.exportCode(d);
+    assert(code.startsWith('BOTD1:'), 'Prefijo del código');
+    const r = S.importCode(code);
+    assert(r.ok, 'Importar código: ' + r.error);
+    assert(r.data.unlocked === 7 && r.data.bank === 321 && r.data.best[3] === 999 && r.data.achievements.tetra, JSON.stringify(r.data));
+    assert(r.data.settings.musicVol === 0.3 && r.data.totals.kills === 50, 'Ajustes y estadísticas');
+    const f = S.importCode(S.exportJson(d));
+    assert(f.ok && f.data.bank === 321, 'Importar archivo');
+    assert(S.importCode('  ' + code + '\n').ok, 'Tolera espacios alrededor');
+  });
+
+  test('Exportar/importar: rechaza copias modificadas o inválidas', () => {
+    const json = S.exportJson(S.sanitize({ bank: 10 }));
+    const tampered = json.replace('\\"bank\\":10', '\\"bank\\":99999');
+    assert(tampered !== json, 'La prueba debe modificar la copia');
+    assert(S.importCode(tampered).error === 'import_corrupt', 'Debe detectar la modificación');
+    assert(S.importCode('hola').error === 'import_bad', 'Texto cualquiera');
+    assert(S.importCode('').error === 'import_bad', 'Vacío');
+    assert(S.importCode(JSON.stringify({ p: '{"app":"otra"}', h: S.hash('{"app":"otra"}') })).error === 'import_bad', 'Otra app');
+  });
+
+  test('Exportar/importar: reemplazar guarda la partida importada', () => {
+    withTestStorage(() => {
+      S.load();
+      const r = S.importCode(S.exportCode(S.sanitize({ unlocked: 9, bank: 77 })));
+      S.replace(r.data);
+      const d = S.load();
+      assert(d.unlocked === 9 && d.bank === 77, JSON.stringify({ unlocked: d.unlocked, bank: d.bank }));
+    });
+  });
+
+  test('Audio: cambiar volúmenes sin sonido iniciado no da error', () => {
+    BOTD.Audio.setSfxVolume(0.5);
+    BOTD.Audio.setMusicVolume(2);
+    BOTD.Audio.setMusicVolume(0.8);
+    BOTD.Audio.setSfxVolume(0.8);
+  });
+
   /* ---------- Ejecutar ---------- */
   const results = [];
   const list = document.getElementById('results');

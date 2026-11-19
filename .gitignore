@@ -10,3 +10,8 @@ desktop.ini
 
 # Registros
 *.log
+
+# Herramientas de pruebas (solo se instalan en GitHub Actions o en local)
+node_modules/
+package.json
+package-lock.json
