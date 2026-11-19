@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Block of the Dead</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Lilita+One&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="app">
+    <main id="play">
+      <div id="stage">
+        <div id="board-wrap">
+          <canvas id="game"></canvas>
+          <div id="tip" class="tip hidden" role="status" aria-live="polite">
+            <div class="tip-step"></div>
+            <div class="tip-text"></div>
+            <button class="tip-skip" data-cmd="tut-skip" data-i18n="tut_skip"></button>
+          </div>
+        </div>
+      </div>
+      <div id="touch" class="touch-controls">
+        <button data-action="left" data-i18n-aria="aria_left">◀</button>
+        <button data-action="rotate" data-i18n-aria="aria_rotate">⟳</button>
+        <button data-action="right" data-i18n-aria="aria_right">▶</button>
+        <button data-action="down" data-i18n-aria="aria_down">▼</button>
+        <button data-action="drop" data-i18n-aria="aria_drop">⤓</button>
+      </div>
+    </main>
+
+    <aside id="panel" class="wood">
+      <h1 class="logo" data-i18n="title"></h1>
+      <div class="stats">
+        <div class="stat"><span data-i18n="hud_level"></span><b id="hud-level">1</b></div>
+        <div class="stat"><span data-i18n="hud_wave"></span><b id="hud-wave">0/0</b></div>
+        <div class="stat lives"><span data-i18n="hud_lives"></span><b id="hud-lives"></b></div>
+        <div class="stat brains"><span data-i18n="hud_brains"></span><b><img class="ico" src="assets/svg/brain.svg" alt=""><span id="hud-brains">0</span></b></div>
+        <div class="stat score"><span data-i18n="hud_score"></span><b id="hud-score">0</b></div>
+      </div>
+      <div class="next-box">
+        <span data-i18n="hud_next"></span>
+        <canvas id="next" width="192" height="192"></canvas>
+      </div>
+      <div class="shop">
+        <h2 data-i18n="shop_title"></h2>
+        <div class="shop-list">
+          <button class="shop-btn" data-shop="choose"><span class="key">1</span><span class="label" data-i18n="shop_choose"></span><span class="cost"></span></button>
+          <button class="shop-btn" data-shop="single"><span class="key">2</span><span class="label" data-i18n="shop_single"></span><span class="cost"></span></button>
+          <button class="shop-btn" data-shop="bomb"><span class="key">3</span><span class="label" data-i18n="shop_bomb"></span><span class="cost"></span></button>
+        </div>
+      </div>
+      <div class="panel-buttons">
+        <button class="icon-btn" id="btn-pause" data-cmd="pause" data-i18n-aria="pause_title">⏸</button>
+        <button class="icon-btn" id="btn-sfx" data-cmd="sfx" data-i18n-aria="sound">🔊</button>
+        <button class="icon-btn" id="btn-music" data-cmd="music" data-i18n-aria="music">🎵</button>
+        <button class="icon-btn fs-btn" id="btn-fs" data-cmd="fullscreen" data-i18n-aria="fullscreen">⛶</button>
+      </div>
+    </aside>
+  </div>
+
+  <div id="screens" class="screens">
+    <section class="screen" id="screen-menu">
+      <div class="card wood">
+        <h1 class="title" data-i18n="title"></h1>
+        <p class="tagline" data-i18n="tagline"></p>
+        <div class="menu-buttons">
+          <button class="btn primary" id="btn-play" data-cmd="play" data-i18n="loading" disabled></button>
+          <div class="menu-grid">
+            <button class="btn" data-cmd="levels" data-i18n="menu_levels"></button>
+            <button class="btn" id="btn-survival" data-cmd="survival" data-i18n="menu_survival"></button>
+            <button class="btn" data-cmd="shed" data-i18n="menu_shed"></button>
+            <button class="btn" data-cmd="achievements" data-i18n="menu_achievements"></button>
+            <button class="btn" data-cmd="almanac" data-i18n="menu_almanac"></button>
+            <button class="btn" data-cmd="howto" data-i18n="menu_howto"></button>
+          </div>
+          <div class="toggles">
+            <button class="btn small tg-sfx" data-cmd="sfx"></button>
+            <button class="btn small tg-music" data-cmd="music"></button>
+          </div>
+          <button class="btn small fs-btn" data-cmd="fullscreen" data-i18n="fullscreen"></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-levels">
+      <div class="card wood">
+        <h2 data-i18n="menu_levels"></h2>
+        <div id="level-list" class="level-list"></div>
+        <button class="btn" data-cmd="back" data-i18n="back"></button>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-loadout">
+      <div class="card wood wide">
+        <h2 data-i18n="loadout_title"></h2>
+        <p class="tagline lo-sub"><span id="loadout-level"></span> · <span data-i18n="loadout_hint"></span></p>
+        <div id="loadout-list" class="lo-list"></div>
+        <div class="lo-actions">
+          <button class="btn" data-cmd="back" data-i18n="back"></button>
+          <button class="btn" data-cmd="loadout-reset" data-i18n="loadout_reset"></button>
+          <button class="btn primary" data-cmd="loadout-go" data-i18n="loadout_go"></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-shed">
+      <div class="card wood">
+        <h2 data-i18n="menu_shed"></h2>
+        <p class="tagline" data-i18n="shed_hint"></p>
+        <div class="shed-bank"><img class="ico" src="assets/svg/brain.svg" alt=""><b id="shed-bank">0</b><span data-i18n="shed_bank"></span></div>
+        <div id="shed-list" class="shed-list"></div>
+        <button class="btn" data-cmd="back" data-i18n="back"></button>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-achievements">
+      <div class="card wood wide">
+        <h2 data-i18n="menu_achievements"></h2>
+        <p class="tagline" id="ach-count"></p>
+        <div id="ach-grid" class="ach-grid"></div>
+        <button class="btn" data-cmd="back" data-i18n="back"></button>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-almanac">
+      <div class="card wood wide">
+        <h2 data-i18n="menu_almanac"></h2>
+        <div class="alm-tabs">
+          <button class="btn small" data-cmd="alm-tab" data-arg="def" data-i18n="alm_def"></button>
+          <button class="btn small" data-cmd="alm-tab" data-arg="zomb" data-i18n="alm_zomb"></button>
+        </div>
+        <div class="alm-body">
+          <div id="alm-grid" class="alm-grid"></div>
+          <div id="alm-detail" class="alm-detail"></div>
+        </div>
+        <button class="btn" data-cmd="back" data-i18n="back"></button>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-howto">
+      <div class="card wood wide">
+        <h2 data-i18n="menu_howto"></h2>
+        <div id="howto-body" class="howto"></div>
+        <button class="btn" data-cmd="back" data-i18n="back"></button>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-pause">
+      <div class="card wood">
+        <h2 data-i18n="pause_title"></h2>
+        <div class="menu-buttons">
+          <button class="btn primary" data-cmd="resume" data-i18n="resume"></button>
+          <button class="btn" data-cmd="restart" data-i18n="restart"></button>
+          <div class="toggles">
+            <button class="btn small tg-sfx" data-cmd="sfx"></button>
+            <button class="btn small tg-music" data-cmd="music"></button>
+          </div>
+          <button class="btn small fs-btn" data-cmd="fullscreen" data-i18n="fullscreen"></button>
+          <button class="btn" data-cmd="menu" data-i18n="to_menu"></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-result">
+      <div class="card wood">
+        <h2 id="result-title"></h2>
+        <p id="result-reason" class="tagline"></p>
+        <div id="result-stats" class="result-stats"></div>
+        <div id="new-defense" class="new-defense" style="display:none"></div>
+        <div class="menu-buttons">
+          <button class="btn primary" id="btn-next" data-cmd="next" data-i18n="next_level"></button>
+          <button class="btn" data-cmd="retry" data-i18n="retry"></button>
+          <button class="btn" data-cmd="shed" data-i18n="menu_shed"></button>
+          <button class="btn" data-cmd="menu" data-i18n="to_menu"></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-error">
+      <div class="card wood">
+        <h2 class="lose" data-i18n="error_title"></h2>
+        <p class="tagline" data-i18n="error_text"></p>
+        <div class="menu-buttons">
+          <button class="btn primary" data-cmd="restart" data-i18n="restart"></button>
+          <button class="btn" data-cmd="menu" data-i18n="to_menu"></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-picker">
+      <div class="card wood">
+        <h2 data-i18n="picker_title"></h2>
+        <div id="picker-grid" class="picker-grid"></div>
+        <button class="btn" data-cmd="picker-cancel" data-i18n="cancel"></button>
+      </div>
+    </section>
+  </div>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+
+  <!-- Scripts clásicos (no módulos) para que funcione abriendo el archivo con doble clic -->
+  <script src="js/config.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/assets.js"></script>
+  <script src="js/pieces.js"></script>
+  <script src="js/board.js"></script>
+  <script src="js/defenses.js"></script>
+  <script src="js/zombies.js"></script>
+  <script src="js/projectiles.js"></script>
+  <script src="js/levels.js"></script>
+  <script src="js/progress.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/tutorial.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
