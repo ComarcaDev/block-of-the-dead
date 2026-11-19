@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+  <rect x="2" y="2" width="96" height="96" rx="12" fill="#8a5a33" stroke="#3b2412" stroke-width="4"/>
+  <g fill="#6e4526"><circle cx="18" cy="18" r="4"/><circle cx="80" cy="22" r="5"/><circle cx="30" cy="40" r="3"/><circle cx="84" cy="48" r="3"/></g>
+  <g fill="#a6743f"><circle cx="66" cy="14" r="3"/><circle cx="14" cy="50" r="3"/></g>
+  <path d="M17 72a33 33 0 0 1 66 0z" fill="#7b8190" stroke="#22252e" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M29 58a21 21 0 0 1 14-15" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="5" stroke-linecap="round"/>
+  <g fill="#5b606e" stroke="#22252e" stroke-width="2.5">
+    <circle cx="34" cy="62" r="3"/><circle cx="66" cy="62" r="3"/><circle cx="50" cy="52" r="3"/>
+  </g>
+  <rect x="44" y="30" width="12" height="11" rx="2" fill="#22252e"/>
+  <circle cx="50" cy="30" r="6.5" fill="#ff3b2e" stroke="#22252e" stroke-width="3"/>
+  <path d="M5 74q14-9 26-2 10-7 20 0 12-7 22 0 10-5 22 2v18a6 6 0 0 1-6 6H11a6 6 0 0 1-6-6z" fill="#6e4526" stroke="#3b2412" stroke-width="3.5" stroke-linejoin="round"/>
+  <g fill="#a6743f"><circle cx="24" cy="86" r="3"/><circle cx="58" cy="84" r="2.5"/><circle cx="80" cy="88" r="3"/></g>
+</svg>
