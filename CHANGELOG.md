@@ -2,6 +2,26 @@
 
 Todas las versiones de **Block of the Dead**. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y las versiones usan [SemVer](https://semver.org/lang/es/).
 
+## [1.4.0] - 2026-11-19
+
+### Añadido
+- **App instalable (PWA)**:
+  - el juego se puede instalar desde la web como una app en el móvil o el PC, con el botón **📲 Instalar app** del menú o de Ajustes;
+  - el botón aparece cuando el navegador lo permite (Chrome, Edge o Android). En iPhone se usa Compartir → Añadir a pantalla de inicio.
+- **Jugar sin conexión**:
+  - un *service worker* guarda todos los archivos del juego, y con conexión siempre se sirve la versión más nueva;
+  - cuando se publica una versión nueva, aparece un aviso con el botón **Actualizar**.
+- **Icono propio de la app**, en SVG y en PNG de 32, 180, 192 y 512 px, con versión *maskable* para Android.
+- **Móvil en vertical**:
+  - panel más compacto, con nombres cortos en la tienda;
+  - botones táctiles más grandes, en dos grupos (mover y acciones);
+  - opción en Ajustes para poner los botones de mover a la izquierda o a la derecha.
+- **Vista ampliada en vertical**, en Ajustes: recorta la parte final de la zona de los zombies para que el tablero se vea más grande. Los zombies entran por el borde.
+- **4 pruebas nuevas**, 75 en total. Comprueban, entre otras cosas, que la lista de archivos sin conexión incluya todos los dibujos y scripts.
+
+### Cambiado
+- `js/config.js` usa `self` en lugar de `window`, para que también lo pueda cargar el *service worker*.
+
 ## [1.3.0] - 2026-11-19
 
 ### Añadido
@@ -83,6 +103,7 @@ Todas las versiones de **Block of the Dead**. El formato sigue [Keep a Changelog
 - **Presentación**: estilo cartoon con dibujos SVG originales, sonido y música con Web Audio, controles táctiles y pantalla completa.
 - **Pruebas automáticas** en `tests.html`.
 
+[1.4.0]: https://github.com/ComarcaDev/block-of-the-dead/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/ComarcaDev/block-of-the-dead/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/ComarcaDev/block-of-the-dead/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/ComarcaDev/block-of-the-dead/compare/v1.0.0...v1.1.0

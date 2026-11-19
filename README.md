@@ -10,6 +10,14 @@ Abre `index.html` con doble clic. No hace falta instalar nada ni usar un servido
 
 También se puede jugar en línea, en GitHub Pages: https://comarcadev.github.io/block-of-the-dead/
 
+**Instalar como app**: desde la web, pulsa **📲 Instalar app** en el menú o en Ajustes. El botón aparece en Chrome, Edge y Android. En iPhone, usa Compartir → Añadir a pantalla de inicio.
+
+Una vez abierto desde la web, el juego **funciona sin conexión**. Cuando hay una versión nueva, aparece un aviso para actualizar.
+
+Abriendo `index.html` con doble clic el juego funciona igual, pero no se puede instalar ni jugar sin conexión: el *service worker* necesita `http` o `https`.
+
+- **Si añades archivos al juego**: inclúyelos en `js/precache.js`; las pruebas lo comprueban.
+
 Para probar con atajos de depuración, abre `index.html?debug`. Con este modo todos los niveles están desbloqueados y puedes usar estas teclas:
 
 - **K**: mata a todos los zombies.
@@ -174,6 +182,11 @@ js/input.js       teclado, botones táctiles y gestos
 js/ui.js          menús, HUD y tienda
 js/tutorial.js    tutorial guiado del nivel 1
 js/progress.js    cobertizo de mejoras y logros
+js/pwa.js         app instalable: registro, aviso de actualización y botón Instalar
+js/precache.js    archivos que se guardan para jugar sin conexión
+sw.js             service worker (jugar sin conexión)
+manifest.webmanifest  datos de la app instalable
+assets/icons/     icono de la app (SVG y PNG)
 js/storage.js     guardado del progreso (localStorage)
 js/main.js        arranque y bucle principal
 ```

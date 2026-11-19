@@ -907,6 +907,51 @@
     A2.setTrack('garden'); A2.setIntensity(false);
   });
 
+  /* ---------- v1.4: app instalable y móvil ---------- */
+  test('Sin conexión: la lista de precarga incluye todos los dibujos y scripts', () => {
+    const list = self.BOTD_PRECACHE;
+    assert(Array.isArray(list) && list.includes('index.html') && list.includes('manifest.webmanifest'), 'Página y manifiesto');
+    // Todos los dibujos que carga el juego
+    const svgs = ['wall', 'single', 'bunker', 'hedge', 'shooter-head', 'mine', 'slime', 'bomb', 'pea', 'zombie-head',
+      'zombie-jaw', 'zombie-torso', 'zombie-arm', 'zombie-leg', 'runner-head', 'runner-torso', 'boss-head', 'boss-torso',
+      'boss-arm', 'cone', 'house', 'tombstone', 'brain', 'cloud', 'dirt', 'roller', 'ice-base', 'ice-head', 'ice-pea',
+      'cactus', 'flower-base', 'sunflower', 'grave-block', 'bucket', 'shield', 'digger-head', 'balloon', 'crown'];
+    const missingSvg = svgs.filter(n => !list.includes(BOTD.Assets.url(n)));
+    assert(!missingSvg.length, 'Faltan dibujos: ' + missingSvg.join(', '));
+    // Todos los scripts del juego
+    const js = ['config', 'i18n', 'storage', 'audio', 'assets', 'pieces', 'board', 'defenses', 'zombies', 'projectiles',
+      'levels', 'progress', 'game', 'render', 'input', 'ui', 'tutorial', 'pwa', 'main'];
+    const missingJs = js.filter(n => !list.includes('js/' + n + '.js'));
+    assert(!missingJs.length, 'Faltan scripts: ' + missingJs.join(', '));
+    assert(list.every(p => typeof p === 'string' && !p.startsWith('/') && !p.includes('..')), 'Rutas relativas y seguras');
+    assert(new Set(list).size === list.length, 'Sin duplicados');
+  });
+
+  test('Sin conexión: config.js funciona también fuera de la página (service worker)', () => {
+    assert(self.BOTD === window.BOTD && typeof BOTD.VERSION === 'string', 'BOTD global en self');
+    assert(typeof BOTD.PWA.register === 'function' && typeof BOTD.PWA.supported === 'function', 'Módulo PWA');
+    assert(BOTD.PWA.canInstall === false, 'Sin instalar al empezar');
+  });
+
+  test('Móvil: ajustes de botones táctiles y vista ampliada', () => {
+    const d = S.sanitize({ settings: { touchLayout: 'swap', zoomView: true } });
+    assert(d.settings.touchLayout === 'swap' && d.settings.zoomView === true, JSON.stringify(d.settings));
+    const def = S.sanitize({ settings: { touchLayout: 'arriba', zoomView: 'si' } });
+    assert(def.settings.touchLayout === 'split' && def.settings.zoomView === false, 'Valores inválidos');
+  });
+
+  test('Móvil: la vista ampliada recorta solo la zona de los zombies', () => {
+    const R2 = BOTD.Render;
+    const full = R2.LW;
+    assert(full === (C.COLS + 1) * C.CELL, 'Ancho completo: ' + full);
+    assert(R2.setCrop(3) === true && R2.LW === full - 3 * C.CELL && R2.cropCols === 3, 'Recorte de 3 columnas');
+    assert(R2.setCrop(3) === false, 'Mismo recorte: sin cambios');
+    R2.setCrop(99);
+    assert(R2.LW >= (C.BUILD_COLS + 2) * C.CELL, 'Nunca tapa la zona de construcción: ' + R2.LW);
+    R2.setCrop(0);
+    assert(R2.LW === full, 'Vuelve al ancho completo');
+  });
+
   /* ---------- Ejecutar ---------- */
   const results = [];
   const list = document.getElementById('results');
