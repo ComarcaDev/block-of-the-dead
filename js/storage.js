@@ -19,8 +19,11 @@ BOTD.Storage = (() => {
         sfxVol: 0.8, musicVol: 0.8,        // volúmenes (0–1)
         quality: 'auto',                   // 'auto' | 'high' | 'low'
         shake: true,                       // sacudidas de pantalla
-        showFps: false                     // contador de FPS
+        showFps: false,                    // contador de FPS
+        difficulty: 'normal'               // 'easy' | 'normal' | 'hard'
       },
+      // Reto diario: récord del día, racha de días seguidos y último día jugado
+      daily: { date: '', best: 0, streak: 0, bestStreak: 0, last: '' },
       loadout: {},                         // defensa elegida para cada pieza
       upgrades: {},                        // mejoras permanentes compradas
       bank: 0,                             // cerebros guardados para el cobertizo
@@ -73,6 +76,16 @@ BOTD.Storage = (() => {
       out.settings.quality = ['auto', 'high', 'low'].includes(s.quality) ? s.quality : 'auto';
       out.settings.shake = bool(s.shake, true);
       out.settings.showFps = bool(s.showFps, false);
+      out.settings.difficulty = ['easy', 'normal', 'hard'].includes(s.difficulty) ? s.difficulty : 'normal';
+    }
+    if (isObj(d.daily)) {
+      const dl = d.daily;
+      const isDate = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+      out.daily.date = isDate(dl.date) ? dl.date : '';
+      out.daily.last = isDate(dl.last) ? dl.last : '';
+      out.daily.best = Math.round(num(dl.best, 0, 0, 1e12));
+      out.daily.streak = Math.round(num(dl.streak, 0, 0, 1e6));
+      out.daily.bestStreak = Math.round(num(dl.bestStreak, 0, 0, 1e6));
     }
     out.loadout = strMap(d.loadout);
     out.upgrades = numMap(d.upgrades);

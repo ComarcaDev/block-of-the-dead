@@ -55,6 +55,17 @@ BOTD.CONFIG = {
 
   SHOP: { choose: 25, single: 15, bomb: 40 },
 
+  // Dificultad: multiplicadores sobre los valores normales
+  //   fall: tiempo de caída de las piezas (más alto = más lento) · zombieHp / zombieSpeed · brains: cerebros ganados
+  DIFFICULTY: {
+    easy:   { fall: 1.25, zombieHp: 0.75, zombieSpeed: 0.85, brains: 1.25 },
+    normal: { fall: 1,    zombieHp: 1,    zombieSpeed: 1,    brains: 1 },
+    hard:   { fall: 0.8,  zombieHp: 1.3,  zombieSpeed: 1.12, brains: 0.85 }
+  },
+
+  // Reto diario: oleadas que se generan para cada fecha
+  DAILY: { waves: 4, baseCount: 6, countPerWave: 2, intervalStart: 5, intervalPerWave: 0.5 },
+
   // Combos: cada pieza seguida que completa línea multiplica los cerebros por (1 + COMBO_STEP × (combo − 1))
   COMBO_STEP: 0.5,
 
@@ -88,7 +99,7 @@ BOTD.CONFIG = {
 };
 
 // Versión del juego (se muestra en el menú y se usa en las copias exportadas)
-BOTD.VERSION = '1.1.0';
+BOTD.VERSION = '1.2.0';
 
 // Estado de calidad en tiempo de ejecución (lo cambia main.js si el equipo va lento o según los ajustes)
 BOTD.Quality = { low: false };

@@ -321,7 +321,7 @@ button { font-family: var(--text); font-weight: 700; color: var(--cream); cursor
 }
 
 /* ---------- Controles táctiles ---------- */
-.touch-controls { display: none; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.touch-controls { display: none; grid-template-columns: repeat(6, 1fr); gap: 8px; }
 .touch-controls button {
   height: 64px;
   font-size: 24px;
@@ -579,6 +579,47 @@ button { font-family: var(--text); font-weight: 700; color: var(--cream); cursor
   .lo-info { width: auto; flex: 1; }
   .lo-opts { width: 100%; }
   .alm-body { grid-template-columns: 1fr; }
+}
+
+/* ---------- Siguiente y guardada ---------- */
+.piece-boxes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.piece-boxes .next-box { flex-direction: column; gap: 2px; padding: 6px 4px; }
+.piece-boxes #next, .piece-boxes #hold { width: 84px; height: 84px; }
+.hold-box { cursor: pointer; transition: opacity .2s; }
+.hold-box.used { opacity: .45; }
+
+/* ---------- Reto diario ---------- */
+.daily-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--ink);
+  background: linear-gradient(180deg, #ffe27a, #f2b632);
+}
+.daily-title { font-family: var(--title); font-weight: normal; font-size: 20px; }
+.daily-rule { font-size: 13px; }
+.lo-rule {
+  margin: -4px auto 10px;
+  padding: 6px 12px;
+  max-width: 560px;
+  font-size: 14px;
+  text-align: center;
+  color: var(--ink);
+  background: #ffe27a;
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+}
+.lo-diff { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 0 0 12px; font-size: 15px; }
+.lo-diff[hidden], .lo-rule[hidden] { display: none; }
+
+@media (max-width: 860px) {
+  .piece-boxes { gap: 4px; }
+  .piece-boxes .next-box { padding: 2px 4px; font-size: 9px; }
+  .piece-boxes #next, .piece-boxes #hold { width: 48px; height: 48px; }
+  .shop-list .shop-btn { min-width: 0; overflow: hidden; }
+  .shop-btn .label { font-size: 9px; line-height: 1.1; overflow-wrap: anywhere; }
+  .touch-controls { gap: 5px; }
+  .touch-controls button { font-size: 20px; }
 }
 
 /* ---------- Versión ---------- */

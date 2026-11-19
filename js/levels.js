@@ -105,19 +105,91 @@ BOTD.Levels = (() => {
     { nameKey: 'world2', levels: [5, 6, 7, 8, 9] }
   ];
 
-  // Elección de defensas válida: cada pieza lleva una defensa desbloqueada (o la de serie)
-  function loadoutFor(saved, allowed) {
+  // Elección de defensas válida: cada pieza lleva una defensa desbloqueada (o la de serie).
+  // fillAllowed: si la de serie no está permitida, usar la primera permitida (reto "solo minas y muros")
+  function loadoutFor(saved, allowed, fillAllowed) {
     const out = {};
     const ok = new Set(allowed);
     BOTD.Pieces.BAG.forEach(kind => {
       const want = saved && saved[kind];
-      out[kind] = want && ok.has(want) ? want : BOTD.Pieces.TYPE[kind];
+      const def = BOTD.Pieces.TYPE[kind];
+      out[kind] = want && ok.has(want) ? want : (fillAllowed && !ok.has(def) ? allowed[0] : def);
     });
     return out;
   }
 
-  // i < 0 → nivel de supervivencia (se crea nuevo en cada partida, porque sus oleadas crecen)
-  function get(i) { return i < 0 ? makeSurvival() : LEVELS[i]; }
+  // Índices especiales: -1 supervivencia, -2 reto diario
+  const SURVIVAL_INDEX = -1, DAILY_INDEX = -2;
+
+  // Se crean nuevos en cada partida (las oleadas de supervivencia crecen; el reto depende de la fecha)
+  function get(i, dateKey) {
+    if (i === DAILY_INDEX) return makeDaily(dateKey || todayKey());
+    return i < 0 ? makeSurvival() : LEVELS[i];
+  }
+
+  /* ---------- Azar con semilla ---------- */
+  function seedFrom(str) {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+    return h;
+  }
+
+  // Generador mulberry32: la misma semilla da siempre la misma secuencia
+  function seeded(str) {
+    let s = seedFrom(String(str));
+    return () => {
+      s = (s + 0x6D2B79F5) | 0;
+      let t = Math.imul(s ^ (s >>> 15), 1 | s);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  /* ---------- Reto diario ---------- */
+  const DAILY_RULES = ['onlyMinesWalls', 'noRollers', 'fastZombies', 'brainRain', 'totalFog', 'bossRush'];
+
+  // Fecha local en formato AAAA-MM-DD
+  function todayKey(date = new Date()) {
+    const p = n => String(n).padStart(2, '0');
+    return date.getFullYear() + '-' + p(date.getMonth() + 1) + '-' + p(date.getDate());
+  }
+
+  function makeDaily(key) {
+    const D = C.DAILY;
+    const rng = seeded('reto:' + key);
+    const rule = DAILY_RULES[Math.floor(rng() * DAILY_RULES.length)];
+    const world = rng() < 0.5 ? 1 : 2;
+    const pool = world === 1 ? ['basic', 'cone', 'runner', 'bucket'] : ['basic', 'cone', 'bucket', 'shield', 'digger', 'balloon', 'runner'];
+    const level = {
+      nameKey: 'daily', daily: true, dateKey: key, rule, world,
+      ambient: world === 2 ? 'graveyard' : (rng() < 0.5 ? 'day' : 'sunset'),
+      fall: 0.7, lanes: 6 + Math.floor(rng() * 3), startDelay: 10,
+      graves: world === 2 ? 3 + Math.floor(rng() * 3) : 0,
+      fog: world === 2 && rng() < 0.5 ? 3 : 0,
+      waves: []
+    };
+    for (let n = 0; n < D.waves; n++) {
+      const tally = {};
+      const count = D.baseCount + D.countPerWave * n;
+      for (let i = 0; i < count; i++) {
+        const t = pool[Math.floor(rng() * pool.length)];
+        tally[t] = (tally[t] || 0) + 1;
+      }
+      level.waves.push({
+        spawns: Object.keys(tally).sort().map(t => [t, tally[t]]),
+        interval: D.intervalStart - D.intervalPerWave * n,
+        big: n === 1
+      });
+    }
+    // Reglas especiales del día
+    if (rule === 'bossRush') level.waves[D.waves - 1].boss = world === 2 ? 'boss2' : 'boss';
+    if (rule === 'totalFog') level.fog = C.COLS - C.BUILD_COLS;
+    if (rule === 'fastZombies') level.zombieSpeed = 1.35;
+    if (rule === 'brainRain') level.brainMul = 2;
+    if (rule === 'noRollers') level.noRollers = true;
+    if (rule === 'onlyMinesWalls') level.onlyDefenses = ['wall', 'mine'];
+    return level;
+  }
 
   /* ---------- Modo supervivencia ---------- */
   const SV = () => C.SURVIVAL;
@@ -200,11 +272,11 @@ BOTD.Levels = (() => {
     return wave.spawns.reduce((s, [, n]) => s + n, 0) + (wave.boss ? 1 : 0);
   }
 
-  function buildQueue(wave) {
+  function buildQueue(wave, rng = Math.random) {
     const q = [];
     wave.spawns.forEach(([type, n]) => { for (let i = 0; i < n; i++) q.push(type); });
     for (let i = q.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(rng() * (i + 1));
       [q[i], q[j]] = [q[j], q[i]];
     }
     if (wave.boss) q.splice(Math.floor(q.length / 2), 0, wave.boss === true ? 'boss' : wave.boss);
@@ -242,12 +314,18 @@ BOTD.Levels = (() => {
       BOTD.Game.setBanner(g, BOTD.t('boss_incoming'), 2.5, '#ff6b6b');
       BOTD.Audio.play('smash');
     } else {
-      do { lane = g.firstLane + Math.floor(Math.random() * g.level.lanes); }
+      do { lane = g.firstLane + Math.floor(g.rng() * g.level.lanes); }
       while (g.level.lanes > 1 && lane === w.lastLane);
     }
     w.lastLane = lane;
     w.spawned++;
-    const z = BOTD.Zombies.create(type, lane);
+    const z = BOTD.Zombies.create(type, lane, g.rng);
+    // Dificultad y reglas del reto diario
+    const hpMul = g.diff.zombieHp;
+    const speedMul = g.diff.zombieSpeed * (g.level.zombieSpeed || 1);
+    z.hp = z.maxHp = Math.round(z.hp * hpMul);
+    z.shield = z.maxShield = Math.round(z.shield * hpMul);
+    z.speed *= speedMul;
     if (g.level.endless) {
       // Supervivencia: más vida y algo más de velocidad en cada oleada
       const s = SV(), n = Math.max(0, w.index);
@@ -276,7 +354,7 @@ BOTD.Levels = (() => {
       if (w.breakT <= 0) {
         w.index++;
         w.warned = false;
-        w.queue = buildQueue(L.waves[w.index]);
+        w.queue = buildQueue(L.waves[w.index], g.rng);
         w.spawnT = 1.5;
         w.state = 'spawning';
         // En las grandes oleadas salen varios zombies casi a la vez
@@ -313,6 +391,7 @@ BOTD.Levels = (() => {
   return {
     get, startWaves, updateWaves, progress, isBig, survivalWave,
     defensesFor, shopLockedFor, unlockAt, unlockLevelOf, BASE_DEFENSES, WORLDS, loadoutFor,
+    seeded, todayKey, makeDaily, DAILY_RULES, SURVIVAL_INDEX, DAILY_INDEX,
     get count() { return LEVELS.length; }
   };
 })();

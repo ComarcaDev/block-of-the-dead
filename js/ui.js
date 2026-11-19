@@ -121,6 +121,15 @@ BOTD.UI = (() => {
     document.body.classList.toggle('no-fs', !fsOk);
     $('version').textContent = 'v' + BOTD.VERSION;
     initSettings();
+    $('hold-box').addEventListener('click', () => fire('hold'));
+    document.querySelectorAll('#diff-seg button').forEach(b => b.addEventListener('click', () => {
+      BOTD.Audio.play('click');
+      if (loadout) { loadout.difficulty = b.dataset.diff; markDiff(); }
+    }));
+  }
+
+  function markDiff() {
+    document.querySelectorAll('#diff-seg button').forEach(b => b.classList.toggle('selected', loadout && b.dataset.diff === loadout.difficulty));
   }
 
   // Se llama cuando las imágenes ya están cargadas
@@ -172,6 +181,15 @@ BOTD.UI = (() => {
     sv.disabled = !open;
     sv.textContent = open ? BOTD.t('menu_survival') : '🔒 ' + BOTD.t('menu_survival');
     sv.title = open ? '' : BOTD.t('survival_locked');
+    // Reto diario: regla de hoy, racha y récord del día
+    const today = BOTD.Levels.todayKey();
+    const daily = BOTD.Levels.makeDaily(today);
+    const streak = BOTD.Progress.currentStreak(data, today);
+    const best = data.daily.date === today ? data.daily.best : 0;
+    let info = BOTD.t('rule_' + daily.rule);
+    if (streak) info += ' · ' + BOTD.t('daily_streak', { n: streak });
+    if (best) info += ' · ' + BOTD.t('daily_best', { n: best });
+    $('daily-rule').textContent = info;
   }
 
   const survivalOpen = data => data.unlocked > 5;
@@ -263,7 +281,7 @@ BOTD.UI = (() => {
         const lv = BOTD.Levels.get(i);
         const unlocked = debug || i < data.unlocked;
         const beaten = i + 1 < data.unlocked;
-        const best = data.best[i + 1];
+        const best = data.best[BOTD.Progress.recordKey(i + 1, data.settings.difficulty)];
         const b = document.createElement('button');
         b.className = 'level-node' + (beaten ? ' beaten' : '') + (unlocked && !beaten ? ' current' : '');
         b.disabled = !unlocked;
@@ -284,10 +302,18 @@ BOTD.UI = (() => {
   /* ---------- Elección de defensas antes del nivel ---------- */
   let loadout = null;   // { levelIndex, allowed: [], sel: { I: 'wall', ... } }
 
-  function openLoadout(levelIndex, allowed, current) {
-    loadout = { levelIndex, allowed: allowed.slice(), sel: Object.assign({}, current) };
-    const lv = BOTD.Levels.get(levelIndex);
-    $('loadout-level').textContent = (levelIndex < 0 ? '∞' : levelIndex + 1) + '. ' + BOTD.t(lv.nameKey);
+  // opts: { difficulty, daily (nivel del reto, sin selector de dificultad) }
+  function openLoadout(levelIndex, allowed, current, opts) {
+    opts = opts || {};
+    loadout = { levelIndex, allowed: allowed.slice(), sel: Object.assign({}, current), difficulty: opts.difficulty || 'normal' };
+    const lv = opts.daily || BOTD.Levels.get(levelIndex);
+    const prefix = lv.daily ? '★' : levelIndex < 0 ? '∞' : levelIndex + 1;
+    $('loadout-level').textContent = prefix + '. ' + BOTD.t(lv.nameKey);
+    const rule = $('loadout-rule');
+    rule.hidden = !lv.daily;
+    if (lv.daily) rule.textContent = BOTD.t('rule_' + lv.rule) + ': ' + BOTD.t('rule_' + lv.rule + '_d');
+    $('loadout-diff').hidden = !!lv.daily;   // el reto diario es igual para todos (normal)
+    markDiff();
     renderLoadout();
     showScreen('loadout');
   }
@@ -438,22 +464,30 @@ BOTD.UI = (() => {
   function showResult(result, g, newBest, hasNext, newDefense, extra) {
     extra = extra || {};
     const sv = extra.survival;
+    const dl = extra.daily;
     const title = $('result-title');
-    title.textContent = sv ? BOTD.t('survival_over')
+    title.textContent = dl ? (result.won ? BOTD.t('daily_won') : BOTD.t('daily_over'))
+      : sv ? BOTD.t('survival_over')
       : result.won ? (hasNext ? BOTD.t('win_title') : BOTD.t('final_win')) : BOTD.t('lose_title');
     title.className = result.won || sv ? 'win' : 'lose';
-    $('result-reason').textContent = sv ? BOTD.t('survival_reached', { n: sv.wave })
+    const diffNote = g.difficulty !== 'normal' && !dl ? ' · ' + BOTD.t('diff_' + g.difficulty) : '';
+    $('result-reason').textContent = (dl ? BOTD.t('daily_reason', { d: dl.dateLabel, r: BOTD.t('rule_' + g.level.rule) })
+      : sv ? BOTD.t('survival_reached', { n: sv.wave })
       : result.won ? (g.levelIndex + 1) + '. ' + BOTD.t(g.level.nameKey)
-      : BOTD.t(result.reason === 'top' ? 'lose_top' : 'lose_lives');
+      : BOTD.t(result.reason === 'top' ? 'lose_top' : 'lose_lives')) + diffNote;
     const s = $('result-stats');
     s.innerHTML = '';
     const lines = [BOTD.t('result_score', { n: g.score }), BOTD.t('result_lines', { n: g.lines }), BOTD.t('result_kills', { n: g.kills })];
     if (g.stats.maxCombo >= 2) lines.push(BOTD.t('result_combo', { n: g.stats.maxCombo }));
     if (result.won && result.rollersLeft) lines.push(BOTD.t('roller_bonus', { n: result.rollersLeft, p: result.rollerPoints }));
     if (sv) lines.push(BOTD.t('survival_best', { n: sv.bestWave }));
+    if (dl) {
+      lines.push(BOTD.t('daily_best', { n: dl.best }));
+      lines.push(BOTD.t('daily_streak', { n: dl.streak }));
+    }
     if (extra.bankGain) lines.push(BOTD.t('bank_gain', { n: extra.bankGain, t: extra.bankTotal }));
     lines.forEach(t => { const p = document.createElement('p'); p.textContent = t; s.appendChild(p); });
-    if (newBest || (sv && sv.newBest)) { const p = document.createElement('p'); p.className = 'new-best'; p.textContent = BOTD.t('new_best'); s.appendChild(p); }
+    if (newBest || (sv && sv.newBest) || (dl && dl.newBest)) { const p = document.createElement('p'); p.className = 'new-best'; p.textContent = BOTD.t('new_best'); s.appendChild(p); }
 
     // Tarjeta "¡Nueva defensa!"
     const card = $('new-defense');
@@ -493,7 +527,15 @@ BOTD.UI = (() => {
 
   function updateHud(g) {
     if (!g) return;
-    setText('hud-level', g.level.endless ? '∞' : String(g.levelIndex + 1));
+    setText('hud-level', g.level.daily ? '★' : g.level.endless ? '∞' : String(g.levelIndex + 1));
+    const holdKey = g.hold + '|' + g.holdUsed;
+    if (last.hold !== holdKey) {
+      last.hold = holdKey;
+      const cv = $('hold');
+      if (g.hold) BOTD.Render.drawPreview(cv, g.hold, BOTD.Game.typeOf(g, g.hold));
+      else cv.getContext('2d').clearRect(0, 0, cv.width, cv.height);
+      $('hold-box').classList.toggle('used', g.holdUsed);
+    }
     setText('hud-wave', g.level.endless ? String(Math.max(0, g.waves.index + 1))
       : Math.max(0, g.waves.index + 1) + '/' + g.level.waves.length);
     setText('hud-lives', '❤'.repeat(Math.max(0, g.lives)) + '♡'.repeat(Math.max(0, C.LIVES - g.lives)));

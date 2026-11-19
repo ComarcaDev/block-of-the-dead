@@ -42,6 +42,7 @@
     rotate: () => { if (canPlay()) G.rotate(game, 1); },
     rotateCCW: () => { if (canPlay()) G.rotate(game, -1); },
     drop: () => { if (canPlay()) G.hardDrop(game); },
+    hold: () => { if (canPlay()) G.hold(game); },
     soft: v => { if (game) game.softDrop = !!v && canPlay(); },
     pause: () => {
       if (canPlay()) pause();
@@ -62,8 +63,30 @@
       defenses,
       shopLocked: L.shopLockedFor(won),
       loadout: L.loadoutFor(S.data.loadout, defenses),
-      mods: BOTD.Progress.mods(S.data)
+      mods: BOTD.Progress.mods(S.data),
+      difficulty: S.data.settings.difficulty
     };
+  }
+
+  // Reto diario: igual para todos (todas las defensas, sin mejoras ni bloqueos de tienda)
+  let dailyKey = L.todayKey();
+  function dailyOptions(level) {
+    const defenses = level.onlyDefenses || G.ALL_DEFENSES.slice();
+    return {
+      defenses, shopLocked: [], mods: BOTD.Progress.NO_MODS, difficulty: 'normal', dateKey: level.dateKey,
+      loadout: L.loadoutFor(S.data.loadout, defenses, !!level.onlyDefenses)
+    };
+  }
+
+  // Récord de supervivencia por dificultad (normal usa los campos de siempre)
+  function survivalRecord(diff) {
+    if (diff === 'normal') return S.data.survival;
+    return { bestWave: S.data.best['svw:' + diff] || 0, bestScore: S.data.best['svs:' + diff] || 0 };
+  }
+  function saveSurvivalRecord(diff, rec) {
+    if (diff === 'normal') { S.data.survival = rec; return; }
+    S.data.best['svw:' + diff] = rec.bestWave;
+    S.data.best['svs:' + diff] = rec.bestScore;
   }
 
   /* ---------- Logros ---------- */
@@ -96,7 +119,7 @@
     }
   }
 
-  const clampLevel = i => (i < 0 ? -1 : Math.max(0, Math.min(L.count - 1, i)));
+  const clampLevel = i => (i === L.DAILY_INDEX ? i : i < 0 ? L.SURVIVAL_INDEX : Math.max(0, Math.min(L.count - 1, i)));
 
   // Almanaque: marca como descubierto (y guarda solo si es nuevo)
   function markSeen(group, type) {
@@ -117,17 +140,24 @@
   function prepareLevel(i) {
     i = clampLevel(i);
     if (i === 0 && !S.data.tutorialDone) { startLevel(0); return; }
-    const o = levelOptions();
     state = 'loadout';
     A.stopMusic();
     BOTD.Tutorial.cancel();
-    UI.openLoadout(i, o.defenses, o.loadout);
+    if (i === L.DAILY_INDEX) {
+      dailyKey = L.todayKey();   // la fecha se fija al prepararlo (por si cambia el día jugando)
+      const level = L.makeDaily(dailyKey);
+      const o = dailyOptions(level);
+      UI.openLoadout(i, o.defenses, o.loadout, { daily: level });
+      return;
+    }
+    const o = levelOptions();
+    UI.openLoadout(i, o.defenses, o.loadout, { difficulty: o.difficulty });
   }
 
   function startLevel(i) {
     i = clampLevel(i);
     BOTD.Tutorial.cancel();
-    const opts = levelOptions();
+    const opts = i === L.DAILY_INDEX ? dailyOptions(L.makeDaily(dailyKey)) : levelOptions();
     game = G.create(i, {
       onEnd,
       onBrains: (n, x, y) => UI.flyBrains(n, R.worldToClient(x, y)),
@@ -190,15 +220,33 @@
     if (g.survival) {
       A.play('lose');
       const wave = Math.max(0, g.waves.index + 1);
-      const sv = S.data.survival;
+      const sv = survivalRecord(g.difficulty);
       const newBest = wave > sv.bestWave || (wave === sv.bestWave && g.score > sv.bestScore);
       if (wave > sv.bestWave) sv.bestWave = wave;
       if (g.score > sv.bestScore) sv.bestScore = g.score;
+      saveSurvivalRecord(g.difficulty, sv);
       S.data.bank += g.brains;
       S.save();
       UI.showResult(result, g, false, false, null, {
         bankGain: g.brains, bankTotal: S.data.bank,
         survival: { wave, bestWave: sv.bestWave, newBest }
+      });
+      return;
+    }
+
+    // Reto diario: récord del día, racha y cerebros si se gana
+    if (g.level.daily) {
+      A.play(result.won ? 'win' : 'lose');
+      const d = BOTD.Progress.playDaily(S.data, g.level.dateKey, g.score);
+      const bankGain = result.won ? g.brains : 0;
+      if (result.won) { S.data.totals.wins++; S.data.bank += bankGain; }
+      S.save();
+      checkAchievements({ event: 'end', won: !!result.won, levelIndex: g.levelIndex,
+        livesLost: g.stats.livesLost, rollersUsed: g.stats.rollersUsed });
+      const [y, m, day] = g.level.dateKey.split('-');
+      UI.showResult(result, g, false, false, null, {
+        bankGain, bankTotal: S.data.bank,
+        daily: { dateLabel: day + '/' + m + '/' + y, best: S.data.daily.best, newBest: d.newBest, streak: d.streak }
       });
       return;
     }
@@ -212,7 +260,7 @@
       if (firstWin) newDefense = L.unlockAt(num);
       S.unlock(Math.min(L.count, num + 1));
       if (firstWin && num === L.count) S.unlock(num + 1);   // cuenta el último nivel como ganado
-      newBest = S.setBest(num, g.score);
+      newBest = BOTD.Progress.setRecord(S.data, num, g.difficulty, g.score);
       // Los cerebros que sobran se guardan para el cobertizo
       bankGain = g.brains;
       S.data.bank += bankGain;
@@ -233,7 +281,9 @@
       case 'levels': UI.buildLevels(S.data, L.count, DEBUG); UI.showScreen('levels'); break;
       case 'howto': UI.showScreen('howto'); break;
       case 'almanac': markDefensesSeen(); UI.buildAlmanac(S.data); UI.showScreen('almanac'); break;
-      case 'survival': if (S.data.unlocked > 5) prepareLevel(-1); break;
+      case 'survival': if (S.data.unlocked > 5) prepareLevel(L.SURVIVAL_INDEX); break;
+      case 'daily': prepareLevel(L.DAILY_INDEX); break;
+      case 'hold': if (canPlay()) G.hold(game); break;
       case 'shed': UI.buildShed(S.data); UI.showScreen('shed'); break;
       case 'shed-buy':
         if (BOTD.Progress.buy(S.data, arg)) {
@@ -253,7 +303,9 @@
       case 'loadout-go': {
         const lo = UI.getLoadout();
         if (!lo) break;
-        S.data.loadout = Object.assign({}, lo.sel);
+        // La elección del reto "solo minas y muros" no sustituye la habitual
+        if (lo.levelIndex !== L.DAILY_INDEX || !L.makeDaily(dailyKey).onlyDefenses) S.data.loadout = Object.assign({}, lo.sel);
+        if (lo.levelIndex !== L.DAILY_INDEX) S.data.settings.difficulty = lo.difficulty;
         S.save();
         startLevel(lo.levelIndex);
         break;

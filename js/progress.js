@@ -72,5 +72,49 @@ BOTD.Progress = (() => {
     return fresh;
   }
 
-  return { UPGRADE_KEYS, maxLevel, level, cost, canBuy, buy, mods, NO_MODS, ACHIEVEMENTS, evaluate };
+  /* ---------- Récords por dificultad ----------
+     Normal usa la clave de siempre (compatible con la v1.0); fácil y difícil, 'n:easy' / 'n:hard'. */
+  function recordKey(id, difficulty) {
+    return !difficulty || difficulty === 'normal' ? String(id) : id + ':' + difficulty;
+  }
+
+  function setRecord(data, id, difficulty, score) {
+    const k = recordKey(id, difficulty);
+    if (!data.best[k] || score > data.best[k]) { data.best[k] = score; return true; }
+    return false;
+  }
+
+  /* ---------- Reto diario ---------- */
+  // Fecha del día anterior (AAAA-MM-DD)
+  function previousDay(key) {
+    const [y, m, d] = key.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    dt.setDate(dt.getDate() - 1);
+    return BOTD.Levels.todayKey(dt);
+  }
+
+  // Registra una partida del reto de `today` con `score`. Devuelve { newBest, streak }.
+  function playDaily(data, today, score) {
+    const dl = data.daily;
+    if (dl.date !== today) { dl.date = today; dl.best = 0; }
+    if (dl.last !== today) {
+      dl.streak = dl.last === previousDay(today) ? dl.streak + 1 : 1;
+      dl.last = today;
+      dl.bestStreak = Math.max(dl.bestStreak, dl.streak);
+    }
+    const newBest = score > dl.best;
+    if (newBest) dl.best = score;
+    return { newBest, streak: dl.streak };
+  }
+
+  // Racha vigente (si el último día jugado fue ayer u hoy)
+  function currentStreak(data, today) {
+    const dl = data.daily;
+    return dl.last === today || dl.last === previousDay(today) ? dl.streak : 0;
+  }
+
+  return {
+    UPGRADE_KEYS, maxLevel, level, cost, canBuy, buy, mods, NO_MODS, ACHIEVEMENTS, evaluate,
+    recordKey, setRecord, previousDay, playDaily, currentStreak
+  };
 })();
