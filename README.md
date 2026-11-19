@@ -30,6 +30,14 @@ npx playwright install chromium
 node ci/run-tests.mjs
 ```
 
+## Guardar pieza, dificultad y reto diario
+
+- **Guardar pieza**: con la tecla C o Mayús, el botón táctil ⇄ o deslizando hacia arriba, guardas la pieza actual para usarla más tarde. Se puede hacer una vez por pieza.
+- **Dificultad**: fácil, normal o difícil, a elegir antes de cada nivel. Los récords se guardan por separado para cada dificultad.
+  - **Valores**: están en `DIFFICULTY`, en `js/config.js`.
+- **Reto diario** (botón ★ del menú): cada día hay un nivel nuevo, igual para todos los jugadores, con una regla especial. Se guardan el récord del día y la racha de días seguidos.
+  - **Reglas**: se generan en `makeDaily`, en `js/levels.js`.
+
 ## Ajustes, estadísticas y copias
 
 - **Ajustes** (menú o pausa):
@@ -116,6 +124,7 @@ Los cambios de cada versión están en [CHANGELOG.md](CHANGELOG.md).
 | Girar al revés | Z o Q |
 | Bajar rápido | ↓ o S |
 | Soltar la pieza | Espacio |
+| Guardar la pieza | C o Mayús |
 | Pausa | P o Esc |
 | Tienda | 1, 2 y 3 |
 

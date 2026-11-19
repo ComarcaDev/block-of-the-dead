@@ -2,6 +2,27 @@
 
 Todas las versiones de **Block of the Dead**. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y las versiones usan [SemVer](https://semver.org/lang/es/).
 
+## [1.2.0] - 2026-11-19
+
+### Añadido
+- **Guardar pieza (hold)**:
+  - se guarda la pieza actual y se recupera más tarde, una vez por pieza;
+  - funciona con la tecla C o Mayús, con el botón táctil ⇄, deslizando hacia arriba o tocando el recuadro "Guardada";
+  - también sirve con las piezas compradas en la tienda.
+- **Dificultad: fácil, normal y difícil**:
+  - se elige antes de cada nivel;
+  - cambia la velocidad de caída, la vida y la velocidad de los zombies, y los cerebros que ganas;
+  - los récords de los niveles y de supervivencia se guardan por separado para cada dificultad. Los de la v1.0 y la v1.1 cuentan como dificultad normal.
+- **Reto diario**:
+  - cada fecha genera un nivel con su mundo, sus oleadas y sus piezas, igual para todos los jugadores;
+  - cada día tiene una regla especial: solo minas y muros, sin rodillos, zombies rápidos, lluvia de cerebros, niebla total o llega el jefe;
+  - se guardan el récord del día, la racha de días seguidos y la mejor racha;
+  - se juega siempre en dificultad normal, con todas las defensas y sin mejoras del cobertizo.
+- **7 pruebas nuevas**, 65 en total.
+
+### Corregido
+- En el móvil, el botón "Megabomba" de la tienda ya no se monta sobre los botones del panel.
+
 ## [1.1.0] - 2026-11-19
 
 ### Añadido
@@ -34,5 +55,6 @@ Todas las versiones de **Block of the Dead**. El formato sigue [Keep a Changelog
 - **Presentación**: estilo cartoon con dibujos SVG originales, sonido y música con Web Audio, controles táctiles y pantalla completa.
 - **Pruebas automáticas** en `tests.html`.
 
+[1.2.0]: https://github.com/ComarcaDev/block-of-the-dead/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/ComarcaDev/block-of-the-dead/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/ComarcaDev/block-of-the-dead/releases/tag/v1.0.0

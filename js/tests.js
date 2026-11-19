@@ -704,6 +704,118 @@
     BOTD.Audio.setSfxVolume(0.8);
   });
 
+  /* ---------- v1.2: guardar pieza, dificultad y reto diario ---------- */
+  test('Guardar pieza: guarda, saca la siguiente y solo una vez por pieza', () => {
+    const g = newGame();
+    const first = g.piece.kind, next = g.next;
+    assert(BOTD.Game.hold(g) === true, 'Primera vez se puede guardar');
+    assert(g.hold === first && g.piece.kind === next, 'Guardada ' + g.hold + ', actual ' + g.piece.kind);
+    assert(BOTD.Game.hold(g) === false && g.hold === first, 'No se puede guardar dos veces seguidas');
+    BOTD.Game.hardDrop(g);
+    const now = g.piece.kind;
+    assert(BOTD.Game.hold(g) === true && g.piece.kind === first && g.hold === now, 'Tras fijar, intercambia');
+    assert(g.stats.holds === 2, 'Contador: ' + g.stats.holds);
+  });
+
+  test('Guardar pieza: funciona con piezas compradas y la intercambiada nace arriba', () => {
+    const g = newGame();
+    g.brains = 100;
+    BOTD.Game.buy(g, 'single');
+    BOTD.Game.hardDrop(g);                 // ahora cae la U comprada
+    assert(g.piece.kind === 'U', 'Pieza: ' + g.piece.kind);
+    BOTD.Game.hold(g);
+    assert(g.hold === 'U', 'La pieza comprada queda guardada');
+    BOTD.Game.hardDrop(g);
+    BOTD.Game.hold(g);
+    assert(g.piece.kind === 'U' && g.piece.y === 0, 'Sale la U guardada desde arriba');
+  });
+
+  test('Dificultad: cambia la caída, la vida de los zombies y los cerebros', () => {
+    const hard = BOTD.Game.create(0, {}, { difficulty: 'hard' });
+    const easy = BOTD.Game.create(0, {}, { difficulty: 'easy' });
+    const D = C.DIFFICULTY;
+    assert(hard.diff === D.hard && easy.diff === D.easy && hard.difficulty === 'hard', 'Dificultad aplicada');
+    // Vida al aparecer
+    [hard, easy].forEach(g => {
+      g.waves.index = 0; g.waves.state = 'spawning'; g.waves.queue = ['basic']; g.waves.spawnT = 0;
+      BOTD.Game.update(g, 1 / 60);
+    });
+    assert(hard.zombies[0].maxHp === Math.round(C.ZOMBIES.basic.hp * D.hard.zombieHp), 'Vida en difícil: ' + hard.zombies[0].maxHp);
+    assert(easy.zombies[0].maxHp === Math.round(C.ZOMBIES.basic.hp * D.easy.zombieHp), 'Vida en fácil: ' + easy.zombies[0].maxHp);
+    // Cerebros
+    const b0 = easy.brains;
+    BOTD.Game.addBrains(easy, 20, 1, 5);
+    assert(easy.brains - b0 === Math.round(20 * D.easy.brains), 'Cerebros en fácil: +' + (easy.brains - b0));
+    // Caída: en fácil la pieza tarda más en bajar una fila
+    const steps = g => { const y0 = g.piece.y; let n = 0; while (g.piece.y === y0 && n < 600) { BOTD.Game.update(g, 1 / 60); n++; } return n; };
+    const e = BOTD.Game.create(0, {}, { difficulty: 'easy' }), h = BOTD.Game.create(0, {}, { difficulty: 'hard' });
+    e.waves.breakT = h.waves.breakT = 1e9;
+    assert(steps(e) > steps(h), 'Fácil cae más lento que difícil');
+    assert(BOTD.Game.create(0, {}, { difficulty: 'imposible' }).difficulty === 'normal', 'Dificultad inválida → normal');
+  });
+
+  test('Dificultad: récords separados y compatibles con la v1.0', () => {
+    const P = BOTD.Progress;
+    assert(P.recordKey(3, 'normal') === '3' && P.recordKey(3, 'hard') === '3:hard', 'Claves');
+    const d = S.sanitize({ best: { 3: 500 } });
+    assert(!P.setRecord(d, 3, 'normal', 400) && d.best['3'] === 500, 'Normal conserva el récord antiguo');
+    assert(P.setRecord(d, 3, 'hard', 300) && d.best['3:hard'] === 300 && d.best['3'] === 500, 'Difícil aparte');
+    assert(S.sanitize({ settings: { difficulty: 'hard' } }).settings.difficulty === 'hard', 'Se guarda la dificultad');
+    assert(S.sanitize({ settings: { difficulty: 'x' } }).settings.difficulty === 'normal', 'Dificultad inválida');
+  });
+
+  test('Reto diario: la misma fecha da el mismo reto y las mismas piezas', () => {
+    const L = BOTD.Levels;
+    const a = L.makeDaily('2026-11-19'), b = L.makeDaily('2026-11-19');
+    assert(JSON.stringify(a) === JSON.stringify(b), 'Mismo nivel');
+    assert(L.DAILY_RULES.includes(a.rule) && a.daily && a.waves.length === C.DAILY.waves, 'Regla y oleadas');
+    const g1 = BOTD.Game.create(L.DAILY_INDEX, {}, { dateKey: '2026-11-19' });
+    const g2 = BOTD.Game.create(L.DAILY_INDEX, {}, { dateKey: '2026-11-19' });
+    const seq = g => { const s = [g.piece.kind, g.next]; for (let i = 0; i < 12; i++) s.push(g.bag[i] || ''); return s.join(''); };
+    assert(seq(g1) === seq(g2), 'Mismas piezas: ' + seq(g1) + ' / ' + seq(g2));
+    assert(g1.difficulty === 'normal', 'El reto es siempre en normal');
+    // Distintas fechas cambian el reto (al menos una de 10)
+    const sigs = new Set();
+    for (let i = 1; i <= 10; i++) sigs.add(JSON.stringify(L.makeDaily('2027-01-' + String(i).padStart(2, '0'))));
+    assert(sigs.size > 1, 'Las fechas deberían dar retos distintos');
+  });
+
+  test('Reto diario: se aplican las reglas especiales', () => {
+    const L = BOTD.Levels;
+    // Buscar fechas con cada regla
+    const byRule = {};
+    for (let i = 0; i < 400 && Object.keys(byRule).length < L.DAILY_RULES.length; i++) {
+      const dt = new Date(2027, 0, 1 + i);
+      const k = L.todayKey(dt);
+      const r = L.makeDaily(k).rule;
+      if (!byRule[r]) byRule[r] = k;
+    }
+    assert(Object.keys(byRule).length === L.DAILY_RULES.length, 'Faltan reglas: ' + Object.keys(byRule).join(','));
+    const make = rule => BOTD.Game.create(L.DAILY_INDEX, {}, { dateKey: byRule[rule] });
+    assert(!make('noRollers').rollers.some(Boolean), 'Sin rodillos');
+    const mw = make('onlyMinesWalls');
+    assert(['T', 'S', 'L'].every(k => ['wall', 'mine'].includes(BOTD.Game.typeOf(mw, k))), 'Solo minas y muros');
+    assert(make('brainRain').brainMul === 2, 'Lluvia de cerebros');
+    assert(make('totalFog').level.fog === C.COLS - C.BUILD_COLS, 'Niebla total');
+    assert(make('bossRush').level.waves.some(w => w.boss), 'Llega el jefe');
+    assert(make('fastZombies').level.zombieSpeed > 1, 'Zombies rápidos');
+  });
+
+  test('Reto diario: récord del día y racha de días seguidos', () => {
+    const P = BOTD.Progress;
+    const d = S.sanitize({});
+    let r = P.playDaily(d, '2026-11-18', 300);
+    assert(r.newBest && r.streak === 1 && d.daily.best === 300, 'Primer día');
+    r = P.playDaily(d, '2026-11-18', 200);
+    assert(!r.newBest && r.streak === 1 && d.daily.best === 300, 'Mismo día, peor puntuación');
+    r = P.playDaily(d, '2026-11-19', 100);
+    assert(r.newBest && r.streak === 2 && d.daily.best === 100, 'Día siguiente: racha 2 y récord nuevo del día');
+    assert(P.currentStreak(d, '2026-11-20') === 2 && P.currentStreak(d, '2026-11-22') === 0, 'La racha caduca');
+    r = P.playDaily(d, '2026-11-25', 50);
+    assert(r.streak === 1 && d.daily.bestStreak === 2, 'Se rompe la racha; se guarda la mejor');
+    assert(P.previousDay('2026-03-01') === '2026-02-28' && P.previousDay('2027-01-01') === '2026-12-31', 'Cambio de mes y año');
+  });
+
   /* ---------- Ejecutar ---------- */
   const results = [];
   const list = document.getElementById('results');
