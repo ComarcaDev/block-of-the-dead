@@ -6,7 +6,7 @@ Juego de navegador que mezcla piezas que caen con defensa contra zombies. Las pi
 
 Abre `index.html` con doble clic. No hace falta instalar nada ni usar un servidor.
 
-También se puede jugar en línea, en GitHub Pages: https://hujeanpaes.github.io/block-of-the-dead/
+También se puede jugar en línea, en GitHub Pages: https://comarcadev.github.io/block-of-the-dead/
 
 Para probar con atajos de depuración, abre `index.html?debug`. Con este modo todos los niveles están desbloqueados y puedes usar estas teclas:
 
