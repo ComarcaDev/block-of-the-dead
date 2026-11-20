@@ -112,6 +112,18 @@ Los cambios de cada versión están en [CHANGELOG.md](CHANGELOG.md).
   - **niebla**: tapa parte de la zona de aparición;
   - **zombies nuevos**: con cubo, con puerta (escudo contra guisantes), excavador (va bajo tierra) y con globo (vuela por encima);
   - **jefe final**: el rey gigante, en el nivel 10.
+- **Mundo 3 · La piscina** (niveles 11–15):
+  - **carriles de agua**: los 4 carriles del centro son una piscina. Los zombies acuáticos salen solo por el agua y los de tierra, por los carriles de césped;
+  - **defensas que cambian en el agua**: un bloque que queda en el agua se transforma, y vuelve a su forma si una línea lo baja a tierra:
+    - lanzaguisantes → **nenúfar tirador**, que también alcanza a los buceadores;
+    - mina → **alga trampa**, que hunde al primer zombie que la toca;
+    - baba → **remolino**, que empuja hacia atrás a los zombies de su carril;
+    - girasol → **faro**, que quita la niebla y deja ver a los buceadores en su carril y los de al lado;
+    - el resto de defensas flota sin cambiar;
+  - **zombies nuevos**: nadador con flotador, buceador (los guisantes normales no le dan bajo el agua), jinete de foca (salta la primera defensa) y buzo con casco (muy resistente);
+  - **niebla** en los niveles 14 y 15;
+  - **jefe final**: el capitán ahogado, en el nivel 15, que además llama a nadadores;
+  - en los carriles de agua, el rodillo es un **limpiafondos**.
 - **Combos**: si colocas varias piezas seguidas que completan línea, los cerebros se multiplican: ×1,5 en el segundo combo, ×2 en el tercero… Colocar una pieza que no completa línea rompe el combo.
 - **Cobertizo**: los cerebros que te sobran al ganar (y al acabar una supervivencia) se guardan. Con ellos compras mejoras para siempre:
   - más daño de los guisantes;
@@ -125,7 +137,7 @@ Los cambios de cada versión están en [CHANGELOG.md](CHANGELOG.md).
   - las piezas caen cada vez más rápido;
   - hay un jefe cada 10 oleadas;
   - se guarda tu récord.
-- **Logros**: 13 retos (cuádruple, combo x5, ganar sin perder vidas, cazar 1000 zombies…). Al conseguir uno aparece un aviso.
+- **Logros**: 16 retos (cuádruple, combo x5, ganar sin perder vidas, cazar 1000 zombies…). Al conseguir uno aparece un aviso.
 - Todos los valores se ajustan en `js/config.js`: `COMBO_STEP`, `UPGRADES` y `SURVIVAL`.
 - **Almanaque**: menú → Almanaque. Las defensas y zombies se desbloquean al descubrirlos y muestran sus datos.
 - **Dónde cambiarlo**:
@@ -168,7 +180,7 @@ index.html        página, panel y pantallas
 css/styles.css    estilos (incluye la versión para móvil)
 js/config.js      valores de equilibrio: vidas, daños, velocidades, costes de la tienda
 js/i18n.js        todos los textos (español; preparado para añadir inglés)
-js/levels.js      los 5 niveles y sus oleadas
+js/levels.js      los 15 niveles (3 mundos), sus oleadas, la supervivencia y el reto diario
 js/pieces.js      piezas, rotación y bolsa de 7
 js/board.js       rejilla, colisiones y líneas
 js/game.js        lógica de la partida
@@ -200,9 +212,10 @@ Los dibujos están en `assets/svg/`. Puedes sustituir cualquiera por tu propio S
   - piezas comunes: `zombie-head`, `zombie-jaw`, `zombie-torso`, `zombie-arm`, `zombie-leg`;
   - variantes del corredor y del gigante: `runner-*`, `boss-*`;
   - `cone`, el cono que se pone encima.
+- **Piscina** (Mundo 3): `lilypad`, `kelp`, `buoy`, `lighthouse`, `tube`, `snorkel`, `seal`, `helmet`, `captain-hat` y `pool-cleaner`. El remolino se dibuja con código.
 - **Escenario**: `house`, `tombstone`, `pea`, `brain`, `cloud`.
 
-El ambiente de cada nivel se elige con el campo `ambient` en `js/levels.js`. Puede ser `day` (día), `sunset` (atardecer) o `night` (noche).
+El ambiente de cada nivel se elige con el campo `ambient` en `js/levels.js`. Puede ser `day` (día), `sunset` (atardecer), `night` (noche), `graveyard` (cementerio), `pool` (piscina de día) o `poolNight` (piscina de noche). Para que un nivel tenga piscina, añade `water: true`. Los carriles de agua se cambian en `POOL.rows`, en `js/config.js`.
 
 Para jugar en pantalla completa, pulsa la tecla F o el botón ⛶.
 

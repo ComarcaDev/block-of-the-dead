@@ -396,8 +396,8 @@
     assert(g.lines === 1 && countGraves() === before - 1, 'Lápidas: ' + before + ' → ' + countGraves());
   });
 
-  test('Mundo 2: 10 niveles y el último tiene al rey gigante', () => {
-    assert(BOTD.Levels.count === 10, 'Niveles: ' + BOTD.Levels.count);
+  test('Mundo 2: el nivel 10 tiene al rey gigante', () => {
+    assert(BOTD.Levels.count >= 10, 'Niveles: ' + BOTD.Levels.count);
     const last = BOTD.Levels.get(9);
     assert(last.waves.some(w => w.boss === 'boss2'), 'Falta el rey gigante');
     const g = newGame(9);
@@ -938,6 +938,139 @@
     assert(d.settings.touchLayout === 'swap' && d.settings.zoomView === true, JSON.stringify(d.settings));
     const def = S.sanitize({ settings: { touchLayout: 'arriba', zoomView: 'si' } });
     assert(def.settings.touchLayout === 'split' && def.settings.zoomView === false, 'Valores inválidos');
+  });
+
+  /* ---------- Mundo 3: la piscina ---------- */
+  const WATER = C.POOL.rows.map(r => r + C.HIDDEN_ROWS);   // filas de la rejilla que son agua
+  const W0 = WATER[0], WL = WATER[WATER.length - 1];
+
+  test('Mundo 3: 15 niveles en 3 mundos, con agua y el capitán al final', () => {
+    assert(BOTD.Levels.count === 15, 'Niveles: ' + BOTD.Levels.count);
+    assert(BOTD.Levels.WORLDS.length === 3 && BOTD.Levels.WORLDS[2].levels.join() === '10,11,12,13,14', 'Mundos');
+    for (let i = 10; i < 15; i++) assert(BOTD.Levels.get(i).water, 'Nivel ' + (i + 1) + ' sin agua');
+    assert(BOTD.Levels.get(14).waves.some(w => w.boss === 'captain'), 'Falta el capitán');
+    const g = newGame(10);
+    assert(g.water.size === 4 && WATER.every(r => g.water.has(r)), 'Carriles de agua: ' + Array.from(g.water));
+    assert(newGame(0).water.size === 0, 'El Mundo 1 no tiene agua');
+  });
+
+  test('Agua: las defensas se transforman al quedar en el agua y flotan las demás', () => {
+    const g = newGame(10);
+    const mk = (type, gun) => BOTD.Board.makeCell(type, gun);
+    g.grid[W0][0] = mk('shooter', true);
+    g.grid[W0][1] = mk('mine');
+    g.grid[W0][2] = mk('slime', true);
+    g.grid[W0][3] = mk('sunflower', true);
+    g.grid[W0][4] = mk('wall');
+    g.grid[H - 1][0] = mk('shooter', true);
+    const fresh = BOTD.Defenses.refreshWater(g);
+    const t = x => g.grid[W0][x].type;
+    assert(t(0) === 'lily' && t(1) === 'kelp' && t(2) === 'whirl' && t(3) === 'lighthouse', [0, 1, 2, 3].map(t).join());
+    assert(t(4) === 'wall' && g.grid[W0][4].wet, 'El muro flota sin cambiar');
+    assert(g.grid[H - 1][0].type === 'shooter' && !g.grid[H - 1][0].wet, 'En tierra no cambia');
+    assert(fresh.sort().join() === 'kelp,lighthouse,lily,whirl', 'Tipos nuevos: ' + fresh.join());
+    assert(g.grid[W0][0].maxHp === C.DEFENSES.lily.gunHp && g.grid[W0][0].hp === g.grid[W0][0].maxHp, 'Vida del nenúfar');
+  });
+
+  test('Agua: al fijar una pieza en el agua se avisa del tipo nuevo', () => {
+    const events = [];
+    const g = BOTD.Game.create(10, { onEvent: (n, d) => events.push(n + ':' + (d.type || '')) }, {});
+    g.waves.breakT = 1e9;
+    for (let y = WL + 1; y < H; y++) for (let x = 0; x < 9; x++) g.grid[y][x] = BOTD.Board.makeCell('wall');
+    g.piece = BOTD.Pieces.create('T'); g.piece.x = 0; g.piece.y = 0;
+    BOTD.Game.hardDrop(g);
+    const cells = g.grid.flat().filter(c => c && c.type === 'lily');
+    assert(cells.length === 4 && cells.filter(c => c.gun).length === 1, 'Nenúfares: ' + cells.length);
+    assert(events.includes('aqua:lily'), events.join(' '));
+  });
+
+  test('Agua: al bajar las filas, un nenúfar que sale del agua vuelve a ser lanzaguisantes', () => {
+    const g = newGame(10);
+    g.piece = null;
+    g.grid[WL][3] = BOTD.Board.makeCell('shooter', true);
+    BOTD.Defenses.refreshWater(g);
+    assert(g.grid[WL][3].type === 'lily', 'Primero es nenúfar');
+    for (let x = 0; x < 10; x++) if (x !== 4) g.grid[H - 1][x] = BOTD.Board.makeCell('wall');
+    g.piece = BOTD.Pieces.create('U'); g.piece.x = 4; g.piece.y = 0;
+    BOTD.Game.hardDrop(g);
+    const c = g.grid[WL + 1][3];
+    assert(g.lines === 1 && c && c.type === 'shooter' && !c.wet && !c.land, 'Tras la línea: ' + (c && c.type));
+  });
+
+  test('Alga trampa: hunde al zombie que la toca y se gasta; al jefe solo le hace daño', () => {
+    const g = newGame(10);
+    g.piece = null;
+    g.grid[W0][5] = BOTD.Board.makeCell('mine');
+    BOTD.Defenses.refreshWater(g);
+    const z = addZombie(g, 'finhelm', W0, 6.4);
+    step(g, 2.5);
+    assert(z.dead && z.killedBy === 'kelp', 'El buzo se hunde');
+    assert(!g.grid[W0][5], 'El alga se gasta');
+    g.grid[W0][5] = BOTD.Board.makeCell('mine');
+    BOTD.Defenses.refreshWater(g);
+    const b = addZombie(g, 'captain', W0, 6.4);
+    b.summonT = -1e9;
+    step(g, 2.5);
+    assert(!b.dead && b.maxHp - b.hp >= C.DEFENSES.kelp.damage, 'El capitán sobrevive con daño: ' + b.hp);
+  });
+
+  test('Buceador: bajo el agua solo le dan el nenúfar o un faro', () => {
+    const g = newGame(10);
+    g.piece = null;
+    const z = addZombie(g, 'diver', W0, 8);
+    z.speed = 0;
+    g.projectiles.push({ lane: W0, x: 7.8, speed: 7, dmg: 20, dead: false });
+    step(g, 0.3);
+    assert(z.diving && z.hp === z.maxHp, 'El guisante normal pasa por encima');
+    g.projectiles.push({ lane: W0, x: 7.8, speed: 7, dmg: 20, lily: true, dead: false });
+    step(g, 0.3);
+    assert(z.hp === z.maxHp - 20, 'El del nenúfar sí le da: ' + z.hp);
+    g.grid[W0 + 1][0] = BOTD.Board.makeCell('sunflower', true);
+    BOTD.Defenses.refreshWater(g);
+    step(g, 0.05);
+    assert(g.lit.has(W0) && g.lit.has(W0 + 1) && g.lit.has(W0 + 2), 'El faro ilumina 3 carriles');
+    g.projectiles.push({ lane: W0, x: 7.8, speed: 7, dmg: 20, dead: false });
+    step(g, 0.3);
+    assert(z.hp === z.maxHp - 40, 'Con el faro, cualquier guisante le da: ' + z.hp);
+  });
+
+  test('Remolino: empuja hacia atrás a los nadadores de su carril', () => {
+    const g = newGame(10);
+    g.piece = null;
+    g.grid[W0][2] = BOTD.Board.makeCell('slime', true);
+    BOTD.Defenses.refreshWater(g);
+    g.grid[W0][2].cd = 0;
+    const z = addZombie(g, 'swimmer', W0, 5);
+    z.speed = 0;
+    step(g, 0.1);
+    assert(Math.abs(z.x - (5 + C.DEFENSES.whirl.push)) < 0.01, 'Posición: ' + z.x);
+  });
+
+  test('Piscina: los zombies acuáticos salen por el agua y los de tierra por tierra', () => {
+    const g = newGame(10);
+    const aqua = BOTD.Levels.lanesFor(g, 'swimmer'), land = BOTD.Levels.lanesFor(g, 'basic');
+    assert(aqua.join() === WATER.join(), 'Agua: ' + aqua.join());
+    assert(land.length === g.level.lanes - 4 && land.every(l => !g.water.has(l)), 'Tierra: ' + land.join());
+    assert(BOTD.Levels.lanesFor(newGame(0), 'swimmer').length === newGame(0).level.lanes, 'Sin agua: cualquier carril');
+  });
+
+  test('Capitán: llama a nadadores por el agua', () => {
+    const g = newGame(14);
+    g.piece = null;
+    const b = addZombie(g, 'captain', WATER[2], 14);
+    b.speed = 0;
+    step(g, C.ZOMBIES.captain.summonEvery + 0.1);
+    const swimmers = g.zombies.filter(z => z.type === 'swimmer');
+    assert(swimmers.length === 1 && g.water.has(swimmers[0].lane), 'Nadadores: ' + swimmers.length);
+  });
+
+  test('Mundo 3: logros nuevos', () => {
+    const d = BOTD.Storage.sanitize({});
+    const ev = BOTD.Progress.evaluate;
+    assert(ev({ event: 'kill', type: 'swimmer', source: 'pea', totalKills: 1 }, d).length === 0, 'Nada por un guisante');
+    assert(ev({ event: 'kill', type: 'swimmer', source: 'kelp', totalKills: 1 }, d).includes('seaweed'), 'Alga');
+    assert(ev({ event: 'kill', type: 'captain', totalKills: 2 }, d).includes('captain'), 'Capitán');
+    assert(ev({ event: 'end', won: true, levelIndex: 14, livesLost: 1, rollersUsed: 1, totalKills: 2 }, d).includes('world3'), 'Mundo 3');
   });
 
   test('Móvil: la vista ampliada recorta solo la zona de los zombies', () => {

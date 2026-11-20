@@ -2,6 +2,35 @@
 
 Todas las versiones de **Block of the Dead**. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y las versiones usan [SemVer](https://semver.org/lang/es/).
 
+## [1.5.0] - 2026-11-19
+
+### Añadido
+- **Mundo 3 · La piscina**, con 5 niveles nuevos (11 a 15) de día y de noche:
+  - los 4 carriles del centro son de agua, con azulejos, bordillo y reflejos que se mueven;
+  - los zombies acuáticos salen solo por el agua y los de tierra, por el césped;
+  - cada nivel nuevo explica en la elección de defensas lo que trae: la piscina, los buceadores y la niebla.
+- **Defensas que se transforman en el agua**: un bloque que queda en un carril de agua cambia a su versión acuática y vuelve a la normal si una línea lo baja a tierra. Conserva la proporción de vida.
+  - **Nenúfar tirador** (del lanzaguisantes): dispara desde el agua y alcanza a los buceadores;
+  - **Alga trampa** (de la mina): hunde al primer zombie que la toca y se gasta. A los jefes les quita 1800 de vida;
+  - **Remolino** (de la baba): cada 4 segundos empuja hacia atrás a los zombies de su carril y frena a quien lo muerde;
+  - **Faro** (del girasol): ilumina su carril y los dos de al lado, quita la niebla y deja ver a los buceadores;
+  - el resto de defensas flota sin cambiar.
+- **5 zombies nuevos**:
+  - **nadador** con flotador;
+  - **buceador**: bajo el agua solo le dan los guisantes del nenúfar, o cualquiera si un faro ilumina su carril. Sale para morder;
+  - **jinete de foca**: muy rápido y salta la primera defensa;
+  - **buzo con casco**: lento y muy resistente;
+  - **capitán ahogado**, el jefe del nivel 15: aplasta bloques y llama a nadadores cada 9 segundos.
+- **Limpiafondos** en lugar del rodillo en los carriles de agua.
+- **Música nueva** para la piscina y sonido de salpicadura.
+- **3 logros nuevos**, 16 en total: completar el Mundo 3, derrotar al capitán y hundir a un zombie con un alga trampa.
+- **Almanaque**: las 4 defensas acuáticas y los 5 zombies nuevos. Las defensas se descubren la primera vez que una cae al agua.
+- **10 dibujos SVG nuevos**, también guardados para jugar sin conexión.
+- **10 pruebas nuevas**, 85 en total.
+
+### Cambiado
+- Quien ya había ganado el nivel 10 puede jugar el nivel 11 directamente.
+
 ## [1.4.0] - 2026-11-19
 
 ### Añadido
@@ -103,6 +132,7 @@ Todas las versiones de **Block of the Dead**. El formato sigue [Keep a Changelog
 - **Presentación**: estilo cartoon con dibujos SVG originales, sonido y música con Web Audio, controles táctiles y pantalla completa.
 - **Pruebas automáticas** en `tests.html`.
 
+[1.5.0]: https://github.com/ComarcaDev/block-of-the-dead/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/ComarcaDev/block-of-the-dead/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/ComarcaDev/block-of-the-dead/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/ComarcaDev/block-of-the-dead/compare/v1.1.0...v1.2.0
