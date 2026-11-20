@@ -82,6 +82,7 @@ BOTD.Audio = (() => {
     combo:(n) => [659, 784, 988, 1175, 1319, 1568].slice(0, Math.min(6, n + 1)).forEach((f, i) => tone(f, 0.12, { vol: 0.1, delay: 0.25 + i * 0.06, type: 'triangle' })),
     achievement: () => [784, 988, 1175, 1568].forEach((f, i) => tone(f, 0.25, { vol: 0.12, delay: i * 0.09, type: 'triangle' })),
     pop:() => { noise(0.08, { vol: 0.25, freq: 4000 }); tone(900, 0.06, { vol: 0.08, slide: 300 }); },
+    splash: () => { noise(0.35, { vol: 0.28, freq: 3000 }); tone(500, 0.12, { type: 'sine', vol: 0.08, slide: 180 }); },
     dig: () => { noise(0.35, { vol: 0.3, freq: 700 }); tone(120, 0.2, { type: 'triangle', vol: 0.15, slide: 200 }); },
     roller:() => { noise(0.9, { vol: 0.35, freq: 500 }); tone(70, 0.8, { type: 'sawtooth', vol: 0.12, slide: 110 }); },
     tip: () => { tone(660, 0.07, { vol: 0.08 }); tone(990, 0.1, { vol: 0.08, delay: 0.07 }); },
@@ -123,6 +124,12 @@ BOTD.Audio = (() => {
       bass: [38, 0, 0, 0, 45, 0, 0, 0, 41, 0, 0, 0, 40, 0, 0, 0, 38, 0, 0, 0, 46, 0, 0, 0, 45, 0, 0, 0, 44, 0, 0, 0],
       mel: [74, 0, 0, 0, 77, 0, 76, 0, 0, 0, 74, 0, 0, 0, 0, 0, 74, 0, 0, 0, 82, 0, 81, 0, 0, 0, 80, 0, 81, 0, 0, 0]
     },
+    // Piscina: tropical y ondulante (Fa mayor)
+    pool: {
+      step: 0.19, bassType: 'triangle', melType: 'triangle',
+      bass: [41, 0, 48, 0, 41, 0, 48, 45, 46, 0, 53, 0, 46, 0, 53, 50, 43, 0, 50, 0, 43, 0, 50, 46, 48, 0, 55, 0, 48, 0, 52, 0],
+      mel: [77, 0, 81, 0, 84, 0, 81, 79, 0, 77, 0, 74, 77, 0, 0, 0, 74, 0, 77, 0, 82, 0, 81, 79, 0, 77, 0, 76, 77, 0, 0, 0]
+    },
     // Supervivencia: insistente (Mi menor)
     survival: {
       step: 0.16, bassType: 'sawtooth', melType: 'square',
@@ -139,11 +146,12 @@ BOTD.Audio = (() => {
   let track = TRACKS.night, trackName = 'night', pendingTrack = null;
   let intensity = 0;   // 0 normal · 1 gran oleada o jefe
 
-  // Pista según el nivel: supervivencia, cementerio, noche o jardín
+  // Pista según el nivel: supervivencia, cementerio, piscina, noche o jardín
   function trackFor(level) {
     if (!level) return 'garden';
     if (level.endless) return 'survival';
     if (level.ambient === 'graveyard') return 'graveyard';
+    if (level.water) return 'pool';
     if (level.ambient === 'night') return 'night';
     return 'garden';
   }

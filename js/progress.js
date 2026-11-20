@@ -54,8 +54,11 @@ BOTD.Progress = (() => {
     { id: 'kills1000',  test: c => c.totalKills >= 1000 },
     { id: 'giant',      test: c => c.event === 'kill' && c.type === 'boss' },
     { id: 'king',       test: c => c.event === 'kill' && c.type === 'boss2' },
+    { id: 'captain',    test: c => c.event === 'kill' && c.type === 'captain' },
+    { id: 'seaweed',    test: c => c.event === 'kill' && c.source === 'kelp' },
     { id: 'world1',     test: c => c.event === 'end' && c.won && c.levelIndex === 4 },
     { id: 'world2',     test: c => c.event === 'end' && c.won && c.levelIndex === 9 },
+    { id: 'world3',     test: c => c.event === 'end' && c.won && c.levelIndex === 14 },
     { id: 'survivor',   test: c => c.event === 'wave' && c.survival && c.n >= 10 },
     { id: 'handy',      test: c => c.event === 'buy' }
   ];

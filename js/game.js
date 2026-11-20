@@ -10,7 +10,8 @@ BOTD.Game = (() => {
   const COLORS = {
     wall: '#9096a1', bunker: '#9a6a3a', shooter: '#4caf3c', mine: '#ff8c1a',
     slime: '#a259d9', single: '#c3c8d1', bomb: '#ffd23f', dirt: '#8a5a33',
-    ice: '#8fd6f7', cactus: '#4caf3c', sunflower: '#ffd23f', grave: '#a19eae'
+    ice: '#8fd6f7', cactus: '#4caf3c', sunflower: '#ffd23f', grave: '#a19eae',
+    lily: '#4caf3c', kelp: '#3f9a5a', whirl: '#4fb8e8', lighthouse: '#ff5a4a'
   };
 
   const ALL_DEFENSES = ['wall', 'bunker', 'shooter', 'mine', 'slime', 'ice', 'cactus', 'sunflower'];
@@ -41,6 +42,8 @@ BOTD.Game = (() => {
       shake: 0, houseFlash: 0, time: 0, banner: null,
       over: false, result: null, endTimer: 0, endFired: false,
       firstLane: H - level.lanes, waves: null,
+      // Piscina: filas de la rejilla que son agua, y carriles iluminados por un faro (se recalculan cada fotograma)
+      water: new Set(level.water ? C.POOL.rows.map(r => r + C.HIDDEN_ROWS) : []), lit: new Set(),
       allowed: new Set(allowed),
       loadout: Object.assign({}, level.onlyDefenses
         ? BOTD.Levels.loadoutFor(opts.loadout, allowed, true) : (opts.loadout || {})),
@@ -241,6 +244,7 @@ BOTD.Game = (() => {
         g.grid[gy][gx] = cell;
       }));
       BOTD.Audio.play('lock');
+      wetCheck(g);
       const rows = B.fullRows(g.grid);
       if (rows.length) {
         g.combo++;
@@ -276,6 +280,7 @@ BOTD.Game = (() => {
       g.flashRows.push({ row: r, t: 0.45 });
     });
     B.removeRows(g.grid, rows);
+    wetCheck(g);   // al bajar las filas, algunos bloques entran o salen del agua
     // Combo: piezas seguidas que completan línea multiplican los cerebros
     const combo = Math.max(1, g.combo || 1);
     const mult = 1 + C.COMBO_STEP * (combo - 1);
@@ -294,6 +299,14 @@ BOTD.Game = (() => {
     g.shake = Math.max(g.shake, 0.2 + 0.08 * n + 0.05 * Math.min(combo, 6));
     BOTD.Audio.play('line', n);
     emit(g, 'lines', { n, combo });
+  }
+
+  // Piscina: transforma los bloques que han entrado o salido del agua y avisa de los tipos nuevos
+  function wetCheck(g) {
+    const fresh = BOTD.Defenses.refreshWater(g);
+    if (!fresh.length) return;
+    BOTD.Audio.play('splash');
+    Array.from(new Set(fresh)).forEach(type => emit(g, 'aqua', { type }));
   }
 
   function megaBomb(g, cx, cy) {
@@ -433,7 +446,7 @@ BOTD.Game = (() => {
     g.score += d.score;
     g.kills++;
     addBrains(g, d.brains, z.x, z.lane + 0.1);
-    const k = z.type === 'boss2' ? 1.6 : z.type === 'boss' ? 1.45 : 0.9;
+    const k = z.type === 'boss2' || z.type === 'captain' ? 1.6 : z.type === 'boss' ? 1.45 : 0.9;
     // El cuerpo cae y se desvanece; la cabeza sale volando
     g.corpses.push({ type: z.type, x: z.x, lane: z.lane, anim: z.anim, t: 0.8, max: 0.8 });
     g.debris.push({
@@ -444,7 +457,8 @@ BOTD.Game = (() => {
     burst(g, z.x, z.lane + 0.6, '#9cc77e', 10, 4);
     puff(g, z.x, z.lane + 0.7, 14);
     BOTD.Audio.play('zombieDie');
-    emit(g, 'kill', { type: z.type });
+    if (g.water.has(z.lane)) splash(g, z.x, z.lane + 0.8, 8);
+    emit(g, 'kill', { type: z.type, source: z.killedBy });
   }
 
   /* ---------- Efectos ---------- */
@@ -460,6 +474,12 @@ BOTD.Game = (() => {
         shape: shape || 'circle', rot: Math.random() * 6
       });
     }
+  }
+
+  // Salpicadura de agua
+  function splash(g, x, y, n) {
+    burst(g, x, y, '#8fdcff', n, 4);
+    burst(g, x, y, '#ffffff', Math.ceil(n / 2), 3);
   }
 
   // Nube de humo cartoon (radio en píxeles lógicos)
@@ -563,6 +583,6 @@ BOTD.Game = (() => {
   return {
     COLORS, create, update, move, rotate, hardDrop, ghostY, buy, canAfford,
     loseLife, win, burst, addText, setBanner, boom, puff, word, zombieDied,
-    typeOf, triggerRoller, rollerIncoming, ALL_DEFENSES, ROLLER, addBrains, hold
+    typeOf, triggerRoller, rollerIncoming, ALL_DEFENSES, ROLLER, addBrains, hold, splash, emit
   };
 })();

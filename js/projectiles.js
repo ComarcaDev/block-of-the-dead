@@ -1,4 +1,5 @@
-/* Guisantes disparados por los lanzaguisantes. Pasan por encima de los bloques. */
+/* Guisantes disparados por los lanzaguisantes. Pasan por encima de los bloques.
+   Los buceadores bajo el agua solo reciben los del nenúfar, o cualquiera si un faro ilumina su carril. */
 window.BOTD = window.BOTD || {};
 
 BOTD.Projectiles = (() => {
@@ -10,6 +11,7 @@ BOTD.Projectiles = (() => {
       p.x += p.speed * dt;
       for (const z of g.zombies) {
         if (z.dead || z.lane !== p.lane || z.jump > 0 || z.underground) continue;
+        if (z.diving && !p.lily && !(g.lit && g.lit.has(z.lane))) continue;
         if (Math.abs(z.x - p.x) < 0.35) {
           BOTD.Zombies.damage(g, z, p.dmg, 'pea');
           if (p.ice && !z.dead) z.chill = C.DEFENSES.ice.slowTime;

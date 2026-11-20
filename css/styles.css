@@ -485,6 +485,7 @@ button { font-family: var(--text); font-weight: 700; color: var(--cream); cursor
 }
 .world h3 { margin: 0 0 10px; font-family: var(--title); font-weight: normal; font-size: 20px; color: #9dff6a; text-shadow: 0 2px 0 var(--ink); }
 .world-2 h3 { color: #d7b4ff; }
+.world-3 h3 { color: #8fdcff; }
 .world-path { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
 .level-node {
   display: flex;
@@ -509,6 +510,8 @@ button { font-family: var(--text); font-weight: 700; color: var(--cream); cursor
 .level-node.current { animation: glow 1.6s ease-in-out infinite; }
 .world-2 .level-node .lv-num { background: #5b3f8a; }
 .world-2 .level-node.beaten .lv-num { background: #45a32c; }
+.world-3 .level-node .lv-num { background: #2a7fb8; }
+.world-3 .level-node.beaten .lv-num { background: #45a32c; }
 
 /* ---------- Elección de defensas ---------- */
 .lo-sub { margin-bottom: 10px; text-align: center; }

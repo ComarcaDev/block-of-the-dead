@@ -96,13 +96,61 @@ BOTD.Levels = (() => {
         { spawns: [['bucket', 4], ['balloon', 3], ['runner', 4], ['digger', 3]], interval: 3.6 },
         { spawns: [['basic', 6], ['cone', 4], ['bucket', 3], ['shield', 3]], interval: 3.6, boss: 'boss2' }
       ]
+    },
+
+    /* ----- Mundo 3: la piscina -----
+       water: los carriles centrales (CONFIG.POOL.rows) son de agua. Los zombies acuáticos salen solo por ellos
+       y los de tierra, por los demás. tipKey: aviso en la pantalla de elección de defensas. */
+    {
+      nameKey: 'lvl11', world: 3, ambient: 'pool', fall: 0.7, lanes: 10, startDelay: 14, water: true, tipKey: 'pool_tip',
+      waves: [
+        { spawns: [['basic', 4], ['swimmer', 3]], interval: 6 },
+        { spawns: [['cone', 3], ['swimmer', 4], ['basic', 2]], interval: 5, big: true },
+        { spawns: [['basic', 4], ['cone', 3], ['swimmer', 5]], interval: 4.5 }
+      ]
+    },
+    {
+      nameKey: 'lvl12', world: 3, ambient: 'pool', fall: 0.68, lanes: 10, startDelay: 12, water: true, tipKey: 'diver_tip',
+      waves: [
+        { spawns: [['swimmer', 4], ['diver', 2], ['basic', 3]], interval: 5.5 },
+        { spawns: [['diver', 3], ['cone', 4], ['swimmer', 3]], interval: 4.8, big: true },
+        { spawns: [['bucket', 3], ['diver', 4], ['swimmer', 4], ['basic', 3]], interval: 4.2 }
+      ]
+    },
+    {
+      nameKey: 'lvl13', world: 3, ambient: 'pool', fall: 0.64, lanes: 10, startDelay: 12, water: true,
+      waves: [
+        { spawns: [['seal', 2], ['swimmer', 4], ['runner', 2]], interval: 5 },
+        { spawns: [['seal', 3], ['diver', 3], ['shield', 2], ['cone', 3]], interval: 4.5, big: true },
+        { spawns: [['seal', 4], ['diver', 3], ['bucket', 3], ['runner', 3]], interval: 4 },
+        { spawns: [['swimmer', 5], ['seal', 3], ['cone', 4], ['shield', 2]], interval: 3.7 }
+      ]
+    },
+    {
+      nameKey: 'lvl14', world: 3, ambient: 'poolNight', fall: 0.6, lanes: 10, startDelay: 12, water: true, fog: 3, tipKey: 'fog_tip',
+      waves: [
+        { spawns: [['finhelm', 2], ['swimmer', 4], ['basic', 4]], interval: 5 },
+        { spawns: [['finhelm', 2], ['diver', 4], ['balloon', 3], ['cone', 3]], interval: 4.5, big: true },
+        { spawns: [['seal', 3], ['finhelm', 3], ['bucket', 3], ['digger', 2]], interval: 4 },
+        { spawns: [['diver', 4], ['finhelm', 3], ['shield', 3], ['runner', 3], ['swimmer', 3]], interval: 3.6 }
+      ]
+    },
+    {
+      nameKey: 'lvl15', world: 3, ambient: 'poolNight', fall: 0.56, lanes: 10, startDelay: 12, water: true, fog: 3,
+      waves: [
+        { spawns: [['swimmer', 5], ['cone', 4], ['seal', 2]], interval: 4.4 },
+        { spawns: [['diver', 4], ['finhelm', 2], ['bucket', 3], ['balloon', 2]], interval: 4, big: true },
+        { spawns: [['seal', 4], ['finhelm', 3], ['shield', 3], ['digger', 2]], interval: 3.7 },
+        { spawns: [['swimmer', 5], ['diver', 3], ['cone', 4], ['bucket', 3]], interval: 3.6, boss: 'captain' }
+      ]
     }
   ];
 
   // Mundos para el mapa de niveles (índices de LEVELS)
   const WORLDS = [
     { nameKey: 'world1', levels: [0, 1, 2, 3, 4] },
-    { nameKey: 'world2', levels: [5, 6, 7, 8, 9] }
+    { nameKey: 'world2', levels: [5, 6, 7, 8, 9] },
+    { nameKey: 'world3', levels: [10, 11, 12, 13, 14] }
   ];
 
   // Elección de defensas válida: cada pieza lleva una defensa desbloqueada (o la de serie).
@@ -306,19 +354,41 @@ BOTD.Levels = (() => {
     return w && w.total ? Math.min(1, w.spawned / w.total) : 0;
   }
 
+  // Carriles por los que puede salir un tipo: en la piscina, los acuáticos por el agua y los demás por tierra
+  function lanesFor(g, type) {
+    const all = [];
+    for (let l = g.firstLane; l < g.firstLane + g.level.lanes; l++) all.push(l);
+    if (!g.water || !g.water.size) return all;
+    const aqua = !!C.ZOMBIES[type].aquatic;
+    const some = all.filter(l => g.water.has(l) === aqua);
+    return some.length ? some : all;
+  }
+
   function spawn(g, type) {
     const w = g.waves;
+    const pool = lanesFor(g, type);
     let lane;
     if (BOTD.Zombies.isBoss(type)) {
-      lane = g.firstLane + Math.floor(g.level.lanes / 2);
+      lane = pool[Math.floor(pool.length / 2)];
       BOTD.Game.setBanner(g, BOTD.t('boss_incoming'), 2.5, '#ff6b6b');
       BOTD.Audio.play('smash');
     } else {
-      do { lane = g.firstLane + Math.floor(g.rng() * g.level.lanes); }
-      while (g.level.lanes > 1 && lane === w.lastLane);
+      do { lane = pool[Math.floor(g.rng() * pool.length)]; }
+      while (pool.length > 1 && lane === w.lastLane);
     }
     w.lastLane = lane;
     w.spawned++;
+    addZombie(g, type, lane);
+  }
+
+  // Zombie extra llamado por un jefe (no cuenta en la barra de oleadas)
+  function summon(g, type) {
+    const pool = lanesFor(g, type);
+    addZombie(g, type, pool[Math.floor(g.rng() * pool.length)]);
+  }
+
+  function addZombie(g, type, lane) {
+    const w = g.waves;
     const z = BOTD.Zombies.create(type, lane, g.rng);
     // Dificultad y reglas del reto diario
     const hpMul = g.diff.zombieHp;
@@ -389,7 +459,7 @@ BOTD.Levels = (() => {
   }
 
   return {
-    get, startWaves, updateWaves, progress, isBig, survivalWave,
+    get, startWaves, updateWaves, progress, isBig, survivalWave, summon, lanesFor,
     defensesFor, shopLockedFor, unlockAt, unlockLevelOf, BASE_DEFENSES, WORLDS, loadoutFor,
     seeded, todayKey, makeDaily, DAILY_RULES, SURVIVAL_INDEX, DAILY_INDEX,
     get count() { return LEVELS.length; }

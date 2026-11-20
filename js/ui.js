@@ -349,8 +349,9 @@ BOTD.UI = (() => {
     const prefix = lv.daily ? '★' : levelIndex < 0 ? '∞' : levelIndex + 1;
     $('loadout-level').textContent = prefix + '. ' + BOTD.t(lv.nameKey);
     const rule = $('loadout-rule');
-    rule.hidden = !lv.daily;
+    rule.hidden = !lv.daily && !lv.tipKey;
     if (lv.daily) rule.textContent = BOTD.t('rule_' + lv.rule) + ': ' + BOTD.t('rule_' + lv.rule + '_d');
+    else if (lv.tipKey) rule.textContent = BOTD.t(lv.tipKey);   // aviso del nivel (piscina, buceadores, niebla)
     $('loadout-diff').hidden = !!lv.daily;   // el reto diario es igual para todos (normal)
     markDiff();
     renderLoadout();
@@ -405,8 +406,13 @@ BOTD.UI = (() => {
   function getLoadout() { return loadout; }
 
   /* ---------- Almanaque ---------- */
-  const ALM_DEF = ['wall', 'bunker', 'shooter', 'mine', 'slime', 'ice', 'cactus', 'sunflower', 'single', 'bomb', 'dirt', 'grave'];
-  const ALM_ZOMB = ['basic', 'cone', 'runner', 'bucket', 'shield', 'digger', 'balloon', 'boss', 'boss2'];
+  const ALM_DEF = ['wall', 'bunker', 'shooter', 'mine', 'slime', 'ice', 'cactus', 'sunflower', 'single', 'bomb', 'dirt', 'grave',
+    'lily', 'kelp', 'whirl', 'lighthouse'];
+  const ALM_ZOMB = ['basic', 'cone', 'runner', 'bucket', 'shield', 'digger', 'balloon', 'boss', 'boss2',
+    'swimmer', 'diver', 'seal', 'finhelm', 'captain'];
+  // Defensa acuática → defensa de tierra de la que sale
+  const LAND_OF = {};
+  Object.keys(C.POOL.aqua).forEach(k => { LAND_OF[C.POOL.aqua[k]] = k; });
   let almTab = 'def';
 
   function defenseStats(t) {
@@ -414,7 +420,7 @@ BOTD.UI = (() => {
     const out = [];
     if (t === 'bomb') { out.push(BOTD.t('stat_dmg', { n: C.BOMB.damage })); return out; }
     if (D.hp && t !== 'grave') out.push(BOTD.t('stat_hp', { n: D.gunHp || D.hp }));
-    if (t === 'shooter' || t === 'ice') {
+    if (t === 'shooter' || t === 'ice' || t === 'lily') {
       out.push(BOTD.t('stat_dmg', { n: D.damage }));
       out.push(BOTD.t('stat_rate', { n: D.fireInterval }));
     }
@@ -422,6 +428,9 @@ BOTD.UI = (() => {
     if (t === 'mine') { out.push(BOTD.t('stat_dmg', { n: D.damage })); out.push(BOTD.t('stat_radius', { n: D.radius })); }
     if (t === 'cactus') out.push(BOTD.t('stat_thorns', { n: D.thorns }));
     if (t === 'sunflower') out.push(BOTD.t('stat_brains', { n: D.brains, s: D.interval }));
+    if (t === 'kelp') out.push(BOTD.t('stat_kelp', { n: D.damage }));
+    if (t === 'whirl') out.push(BOTD.t('stat_push', { n: D.push, s: D.interval }));
+    if (t === 'lighthouse') out.push(BOTD.t('stat_light'));
     return out;
   }
 
@@ -488,7 +497,8 @@ BOTD.UI = (() => {
       txt.appendChild(ul);
       if (info.isDef) {
         const lvl = BOTD.Levels.unlockLevelOf(info.t);
-        if (lvl) { const u = document.createElement('p'); u.className = 'alm-hint'; u.textContent = BOTD.t('unlock_after', { n: lvl }); txt.appendChild(u); }
+        if (LAND_OF[info.t]) { const u = document.createElement('p'); u.className = 'alm-hint'; u.textContent = BOTD.t('aqua_from', { d: BOTD.t('def_' + LAND_OF[info.t]) }); txt.appendChild(u); }
+        else if (lvl) { const u = document.createElement('p'); u.className = 'alm-hint'; u.textContent = BOTD.t('unlock_after', { n: lvl }); txt.appendChild(u); }
       }
     } else {
       h.textContent = BOTD.t('alm_unknown');

@@ -133,7 +133,9 @@
     if (name === 'kill') {
       T.kills++;
       T.killsByType[data.type] = (T.killsByType[data.type] || 0) + 1;
-      checkAchievements({ event: 'kill', type: data.type });
+      checkAchievements({ event: 'kill', type: data.type, source: data.source });
+    } else if (name === 'aqua') {
+      markSeen('defenses', data.type);   // almanaque: defensa acuática descubierta
     } else if (name === 'lines') {
       T.lines += data.n;
       const k = String(Math.min(4, data.n));

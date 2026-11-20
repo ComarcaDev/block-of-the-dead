@@ -30,7 +30,19 @@ BOTD.CONFIG = {
     ice:     { hp: 110, gunHp: 150, fireInterval: 0.95, damage: 16, peaSpeed: 7, slowFactor: 0.5, slowTime: 2.5 },
     cactus:  { hp: 230, thorns: 16 },             // daño a quien lo muerde
     sunflower: { hp: 100, gunHp: 130, interval: 9, brains: 5 },
-    grave:   { hp: 1 }     // lápida: no se rompe a mordiscos; solo con línea o bomba
+    grave:   { hp: 1 },    // lápida: no se rompe a mordiscos; solo con línea o bomba
+    // Mundo 3: versiones acuáticas (un bloque que queda en un carril de agua se transforma)
+    lily:    { hp: 110, gunHp: 150, fireInterval: 0.75, damage: 22, peaSpeed: 7 },   // nenúfar tirador: alcanza a los buceadores
+    kelp:    { hp: 80, damage: 1800 },                       // alga trampa: hunde al zombie que la toca (a los jefes les quita `damage`)
+    whirl:   { hp: 170, gunHp: 200, interval: 4, push: 1.6, range: 4, slowFactor: 0.45, slowTime: 2.5 },  // remolino: empuja a los nadadores
+    lighthouse: { hp: 110, gunHp: 160 }                      // faro: quita la niebla y descubre a los buceadores (su carril y los vecinos)
+  },
+
+  // Piscina: carriles de agua (índices de los carriles visibles, desde arriba) y qué defensa
+  // se convierte en cuál dentro del agua. Las demás flotan sin cambiar.
+  POOL: {
+    rows: [4, 5, 6, 7],
+    aqua: { shooter: 'lily', mine: 'kelp', slime: 'whirl', sunflower: 'lighthouse' }
   },
 
   ZOMBIES: {
@@ -42,7 +54,13 @@ BOTD.CONFIG = {
     shield: { hp: 140,  shield: 420, speed: 0.28, bite: 22, biteRate: 1.0, brains: 7, score: 30 },
     digger: { hp: 150,  speed: 0.5, underSpeed: 0.8, bite: 24, biteRate: 1.1, brains: 6, score: 25, digs: true },
     balloon: { hp: 130, speed: 0.5, bite: 20, biteRate: 1.0, brains: 6, score: 25, flies: true },
-    boss2:  { hp: 4200, speed: 0.17, bite: 70, biteRate: 0.9, brains: 100, score: 1000, smashEvery: 4 }
+    boss2:  { hp: 4200, speed: 0.17, bite: 70, biteRate: 0.9, brains: 100, score: 1000, smashEvery: 4 },
+    // Mundo 3: zombies acuáticos (solo salen por los carriles de agua)
+    swimmer: { hp: 120, speed: 0.42, bite: 22, biteRate: 1.0, brains: 4, score: 15, aquatic: true },
+    diver:   { hp: 150, speed: 0.4,  bite: 24, biteRate: 1.1, brains: 6, score: 25, aquatic: true, dives: true },
+    seal:    { hp: 140, speed: 0.95, bite: 18, biteRate: 1.3, brains: 6, score: 25, aquatic: true, jumps: true },
+    finhelm: { hp: 650, speed: 0.22, bite: 26, biteRate: 1.0, brains: 9, score: 40, aquatic: true },
+    captain: { hp: 4800, speed: 0.17, bite: 70, biteRate: 0.9, brains: 120, score: 1200, smashEvery: 4, aquatic: true, summonEvery: 9 }
   },
 
   LINES: {
@@ -100,7 +118,7 @@ BOTD.CONFIG = {
 };
 
 // Versión del juego (se muestra en el menú y se usa en las copias exportadas)
-BOTD.VERSION = '1.4.0';
+BOTD.VERSION = '1.5.0';
 
 // Estado de calidad en tiempo de ejecución (lo cambia main.js si el equipo va lento o según los ajustes)
 BOTD.Quality = { low: false };

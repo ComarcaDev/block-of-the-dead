@@ -3,7 +3,10 @@
    - boss / boss2: aplastan un bloque de golpe cada cierto tiempo
    - shield: su escudo absorbe los guisantes (no las explosiones ni las líneas)
    - digger: avanza bajo tierra (invulnerable) y sale detrás del primer bloque
-   - balloon: vuela por encima de los bloques; un guisante revienta el globo */
+   - balloon: vuela por encima de los bloques; un guisante revienta el globo
+   - diver: bucea y los guisantes no le dan (salvo los del nenúfar o con un faro cerca) hasta que sale a morder
+   - seal: salta el primer bloque, como el corredor
+   - captain: jefe de la piscina; además llama a nadadores cada cierto tiempo */
 window.BOTD = window.BOTD || {};
 
 BOTD.Zombies = (() => {
@@ -21,7 +24,7 @@ BOTD.Zombies = (() => {
       hp: d.hp, maxHp: d.hp,
       shield: d.shield || 0, maxShield: d.shield || 0,
       underground: !!d.digs, passedBlock: false,
-      balloon: !!d.flies,
+      balloon: !!d.flies, diving: !!d.dives, summonT: 0,
       speed: d.speed * (0.9 + rng() * 0.2),
       biteT: 0, smashT: 0, slow: 0, chill: 0, flash: 0,
       jumped: false, jump: 0, jumpFrom: 0, jumpTo: 0,
@@ -53,6 +56,7 @@ BOTD.Zombies = (() => {
     z.flash = 0.1;
     if (z.hp <= 0) {
       z.dead = true;
+      z.killedBy = source || 'other';
       BOTD.Game.zombieDied(g, z);
     }
   }
@@ -81,6 +85,17 @@ BOTD.Zombies = (() => {
       if (z.chill > 0) z.chill -= dt;
       const mul = Math.min(z.slow > 0 ? slime.slowFactor : 1, z.chill > 0 ? ice.slowFactor : 1);
       const row = g.grid[z.lane];
+      if (d.dives) z.diving = !z.biting;
+
+      // El capitán llama a nadadores por los carriles de agua
+      if (d.summonEvery) {
+        z.summonT += dt;
+        if (z.summonT >= d.summonEvery) {
+          z.summonT = 0;
+          BOTD.Levels.summon(g, 'swimmer');
+          BOTD.Game.word(g, BOTD.t('fx_summon'), z.x, z.lane - 0.6, 0.8);
+        }
+      }
 
       // En pleno salto
       if (z.jump > 0) {
@@ -150,7 +165,7 @@ BOTD.Zombies = (() => {
         const interval = 1 / d.biteRate;
         if (z.biteT >= interval) {
           z.biteT -= interval;
-          if (cell.type === 'slime') z.slow = slime.slowTime;
+          if (cell.type === 'slime' || cell.type === 'whirl') z.slow = slime.slowTime;
           const thorns = cell.type === 'cactus';
           BOTD.Defenses.damageCell(g, col, z.lane, d.bite);
           BOTD.Audio.play('bite');
