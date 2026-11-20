@@ -9,7 +9,8 @@ BOTD.Assets = (() => {
     'runner-head', 'runner-torso', 'boss-head', 'boss-torso', 'boss-arm', 'cone',
     'house', 'tombstone', 'brain', 'cloud', 'dirt', 'roller',
     'ice-base', 'ice-head', 'ice-pea', 'cactus', 'flower-base', 'sunflower', 'grave-block',
-    'bucket', 'shield', 'digger-head', 'balloon', 'crown'
+    'bucket', 'shield', 'digger-head', 'balloon', 'crown',
+    'lilypad', 'kelp', 'buoy', 'lighthouse', 'tube', 'snorkel', 'seal', 'helmet', 'captain-hat', 'pool-cleaner'
   ];
   const imgs = {};
   const CACHE_MAX = 400;      // imágenes preparadas como máximo (se borran las menos usadas)

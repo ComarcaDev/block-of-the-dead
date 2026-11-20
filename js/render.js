@@ -17,6 +17,7 @@ BOTD.Render = (() => {
   const INK = '#2b1a0e';
 
   let ctx = null;
+  let curWater = null, curLit = null;   // carriles de agua e iluminados de la partida que se dibuja
   let S = 1;        // píxeles reales por unidad lógica
   let curS = 1;     // escala usada para rasterizar las imágenes
 
@@ -44,8 +45,24 @@ BOTD.Render = (() => {
       grassA: '#3d6644', grassB: '#355c3c', tuft: '#26472d',
       dirtA: '#55473f', dirtB: '#4b3f38', pebble: 'rgba(0,0,0,0.3)',
       fog: 'rgba(12,6,30,0.6)', tint: 'rgba(60,20,90,0.26)', tombs: 14
+    },
+    // Mundo 3: piscina de día y de noche (los carriles de CONFIG.POOL.rows son agua)
+    pool: {
+      sky: ['#5cc0ff', '#c9f0ff'], hills: '#4f9a3a',
+      grassA: '#74c94f', grassB: '#66bb44', tuft: '#4f9a35',
+      dirtA: '#d8c79a', dirtB: '#cdbb8c', pebble: 'rgba(120,90,40,0.2)',
+      fog: 'rgba(25,55,20,0.42)', tint: null, tombs: 0, fx: 'day',
+      water: ['#4fc0ec', '#47b4e2'], deck: '#f3e9cf', deckLine: '#bfae86'
+    },
+    poolNight: {
+      sky: ['#0d1440', '#2f2d72'], hills: '#1f3d2a',
+      grassA: '#3f7d4a', grassB: '#37703f', tuft: '#2a5a34',
+      dirtA: '#7a7262', dirtB: '#70685a', pebble: 'rgba(0,0,0,0.25)',
+      fog: 'rgba(5,6,28,0.58)', tint: 'rgba(15,25,85,0.28)', tombs: 0, fx: 'night',
+      water: ['#2a6fa8', '#26669c'], deck: '#b8ad94', deckLine: '#857a62'
     }
   };
+  const POOL_ROWS = new Set(C.POOL.rows.map(r => r + C.HIDDEN_ROWS));   // filas de la rejilla que son agua
 
   /* ---------- Utilidades ---------- */
   function img(c, name, x, y, w, h, variant) {
@@ -158,11 +175,30 @@ BOTD.Render = (() => {
       for (let col = 0; col < C.COLS; col++) {
         const build = col < C.BUILD_COLS;
         const px = OX + col * CELL, py = r * CELL;
-        c.fillStyle = build ? (col % 2 ? P.grassA : P.grassB) : ((col + r) % 2 ? P.dirtA : P.dirtB);
+        const wet = P.water && POOL_ROWS.has(r);
+        c.fillStyle = wet ? P.water[(col + r) % 2] : build ? (col % 2 ? P.grassA : P.grassB) : ((col + r) % 2 ? P.dirtA : P.dirtB);
         c.fillRect(px, py, CELL + 0.5, CELL + 0.5);
-        if (build && r % 2) { c.fillStyle = 'rgba(0,0,0,0.035)'; c.fillRect(px, py, CELL, CELL); }
+        if (build && r % 2 && !wet) { c.fillStyle = 'rgba(0,0,0,0.035)'; c.fillRect(px, py, CELL, CELL); }
       }
     }
+    // Piscina: azulejos del fondo y bordillo de baldosas arriba y abajo
+    if (P.water) {
+      const rows = Array.from(POOL_ROWS).sort((a, b) => a - b);
+      const y0 = rows[0] * CELL, y1 = (rows[rows.length - 1] + 1) * CELL;
+      c.strokeStyle = 'rgba(255,255,255,0.16)';
+      c.lineWidth = 1.5;
+      for (let x = OX; x <= LW; x += CELL / 2) { c.beginPath(); c.moveTo(x, y0); c.lineTo(x, y1); c.stroke(); }
+      for (let y = y0; y <= y1; y += CELL / 2) { c.beginPath(); c.moveTo(OX, y); c.lineTo(LW, y); c.stroke(); }
+      [y0 - 5, y1 - 3].forEach(y => {
+        c.fillStyle = P.deck;
+        c.fillRect(OX, y, LW - OX, 8);
+        c.strokeStyle = P.deckLine;
+        c.lineWidth = 1.5;
+        for (let x = OX; x < LW; x += 16) { c.beginPath(); c.moveTo(x, y); c.lineTo(x, y + 8); c.stroke(); }
+        c.strokeRect(OX, y, LW - OX, 8);
+      });
+    }
+    const dry = y => !P.water || !POOL_ROWS.has(Math.floor(y / CELL));
     // Matas de hierba
     c.strokeStyle = P.tuft;
     c.lineWidth = 2;
@@ -170,6 +206,7 @@ BOTD.Render = (() => {
     for (let i = 0; i < 110; i++) {
       const x = OX + 6 + rand() * (C.BUILD_COLS * CELL - 12);
       const y = skyBot + 8 + rand() * (C.ROWS * CELL - 10);
+      if (!dry(y) || !dry(y - 8)) continue;
       c.beginPath();
       c.moveTo(x - 4, y); c.lineTo(x - 2, y - 6);
       c.moveTo(x, y); c.lineTo(x + 1, y - 8);
@@ -180,7 +217,9 @@ BOTD.Render = (() => {
     for (let i = 0; i < 16; i++) {
       const x = OX + 8 + rand() * (C.BUILD_COLS * CELL - 16);
       const y = skyBot + 8 + rand() * (C.ROWS * CELL - 16);
-      c.fillStyle = rand() > 0.5 ? '#fff6d6' : '#ffd84a';
+      const petal = rand() > 0.5 ? '#fff6d6' : '#ffd84a';
+      if (!dry(y)) continue;
+      c.fillStyle = petal;
       for (let k = 0; k < 4; k++) { c.beginPath(); c.arc(x + Math.cos(k * 1.57) * 2.5, y + Math.sin(k * 1.57) * 2.5, 2, 0, 7); c.fill(); }
       c.fillStyle = '#f08a24'; c.beginPath(); c.arc(x, y, 1.6, 0, 7); c.fill();
     }
@@ -188,15 +227,18 @@ BOTD.Render = (() => {
     const zx = OX + C.BUILD_COLS * CELL;
     c.fillStyle = P.pebble;
     for (let i = 0; i < 70; i++) {
+      const px = zx + rand() * (C.COLS - C.BUILD_COLS) * CELL, py = skyBot + rand() * C.ROWS * CELL;
+      const rx = 2 + rand() * 3, ry = 1.5 + rand() * 2;
+      if (!dry(py)) continue;
       c.beginPath();
-      c.ellipse(zx + rand() * (C.COLS - C.BUILD_COLS) * CELL, skyBot + rand() * C.ROWS * CELL, 2 + rand() * 3, 1.5 + rand() * 2, 0, 0, 7);
+      c.ellipse(px, py, rx, ry, 0, 0, 7);
       c.fill();
     }
     // Borde ondulado entre césped y tierra
     c.fillStyle = P.grassB;
-    for (let y = skyBot; y < H * CELL; y += 12) { c.beginPath(); c.arc(zx, y + 6, 6, -Math.PI / 2, Math.PI / 2); c.fill(); }
+    for (let y = skyBot; y < H * CELL; y += 12) { if (dry(y + 6)) { c.beginPath(); c.arc(zx, y + 6, 6, -Math.PI / 2, Math.PI / 2); c.fill(); } }
     // Lápidas
-    for (let i = 0; i < (P.tombs || 7); i++) {
+    for (let i = 0; i < (P.tombs != null ? P.tombs : 7); i++) {
       const col = C.BUILD_COLS + 1 + Math.floor(rand() * (C.COLS - C.BUILD_COLS - 1));
       const row = C.HIDDEN_ROWS + Math.floor(rand() * C.ROWS);
       img(c, 'tombstone', OX + col * CELL + 8 + rand() * 8, row * CELL + 4, 27, 36);
@@ -225,6 +267,8 @@ BOTD.Render = (() => {
   /* ---------- Efectos de ambiente animados ---------- */
   function ambientFx(c, amb, t) {
     if (BOTD.Quality.low) return;   // calidad baja: sin animaciones de ambiente
+    if (AMB[amb] && AMB[amb].water) poolShimmer(c, t);
+    if (AMB[amb] && AMB[amb].fx) amb = AMB[amb].fx;
     if (amb === 'graveyard') amb = 'night';
     const skyTop = VIEW_TOP, skyBot = C.HIDDEN_ROWS * CELL;
     c.save();
@@ -287,6 +331,83 @@ BOTD.Render = (() => {
         c.beginPath(); c.arc(x, y, 2.2, 0, 7); c.fill();
       }
     }
+  }
+
+  // Reflejos que se mueven sobre el agua
+  function poolShimmer(c, t) {
+    c.save();
+    c.strokeStyle = 'rgba(255,255,255,0.35)';
+    c.lineWidth = 2;
+    c.lineCap = 'round';
+    POOL_ROWS.forEach(r => {
+      for (let i = 0; i < 6; i++) {
+        const x = OX + ((i * 157 + r * 61 + t * 18) % (LW - OX));
+        const y = r * CELL + 10 + ((i * 23) % (CELL - 18));
+        const w = 12 + (i % 3) * 6;
+        c.beginPath();
+        c.moveTo(x, y);
+        c.quadraticCurveTo(x + w / 2, y - 3 - Math.sin(t * 2 + i) * 2, x + w, y);
+        c.stroke();
+      }
+    });
+    c.restore();
+  }
+
+  // Ondas alrededor de algo que flota (cx, y en unidades lógicas)
+  function ripple(c, cx, y, w, t, seed) {
+    const a = 0.5 + 0.3 * Math.sin(t * 3 + (seed || 0));
+    c.strokeStyle = 'rgba(255,255,255,' + a + ')';
+    c.lineWidth = 2.5;
+    c.beginPath(); c.ellipse(cx, y, w / 2, 4, 0, 0, 7); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,' + a * 0.45 + ')';
+    c.beginPath(); c.ellipse(cx, y + 1, w / 2 + 6 + Math.sin(t * 2 + (seed || 0)) * 2, 6, 0, 0, 7); c.stroke();
+  }
+
+  // Remolino dibujado con código: espiral que gira (más rápido al empujar)
+  function drawWhirl(c, x, y, cell, t, seed) {
+    const spin = t * (cell && cell.recoil > 0 ? 9 : 2.5) + seed;
+    c.save();
+    c.translate(x + CELL / 2, y + CELL * 0.55);
+    c.fillStyle = '#2f8fc4';
+    c.strokeStyle = '#123a5a';
+    c.lineWidth = 3;
+    c.beginPath(); c.ellipse(0, 0, CELL * 0.46, CELL * 0.4, 0, 0, 7); c.fill(); c.stroke();
+    c.rotate(spin);
+    c.strokeStyle = '#bff0ff';
+    c.lineWidth = 3.5;
+    c.lineCap = 'round';
+    for (let k = 0; k < 3; k++) {
+      c.beginPath();
+      for (let i = 0; i <= 14; i++) {
+        const a = k * 2.094 + i * 0.32, r = 3 + i * 1.35;
+        c.lineTo(Math.cos(a) * r, Math.sin(a) * r * 0.85);
+      }
+      c.stroke();
+    }
+    c.fillStyle = '#123a5a';
+    c.beginPath(); c.arc(0, 0, 3.5, 0, 7); c.fill();
+    c.restore();
+  }
+
+  // Faro: halo y haz de luz que oscila
+  function drawLighthouse(c, x, y, t, seed) {
+    c.save();
+    c.translate(x + CELL * 0.5, y + CELL * 0.95);
+    const a = 0.25 + 0.15 * Math.sin(t * 2 + seed);
+    const ly = -CELL * 1.05;
+    const g = c.createRadialGradient(0, ly, 2, 0, ly, CELL * 0.9);
+    g.addColorStop(0, 'rgba(255,240,150,' + (a + 0.35) + ')');
+    g.addColorStop(1, 'rgba(255,240,150,0)');
+    c.fillStyle = g;
+    c.beginPath(); c.arc(0, ly, CELL * 0.9, 0, 7); c.fill();
+    c.save();
+    c.translate(0, ly);
+    c.rotate(Math.sin(t * 1.2 + seed) * 0.5);
+    c.fillStyle = 'rgba(255,245,170,' + a + ')';
+    c.beginPath(); c.moveTo(0, -4); c.lineTo(CELL * 2.2, -16); c.lineTo(CELL * 2.2, 16); c.lineTo(0, 4); c.fill();
+    c.restore();
+    img(c, 'lighthouse', -CELL * 0.5, -CELL * 1.3, CELL, CELL * 1.2);
+    c.restore();
   }
 
   /* ---------- Defensas ---------- */
@@ -375,6 +496,22 @@ BOTD.Render = (() => {
         if (cell.gun) drawShooterHead(c, x, y, cell, t, seed, 'ice-head');
         break;
       case 'cactus': img(c, 'cactus', x, y, CELL, CELL); break;
+      case 'lily':
+        img(c, 'lilypad', x, y, CELL, CELL);
+        if (cell.gun) drawShooterHead(c, x, y - CELL * 0.18, cell, t, seed);
+        break;
+      case 'kelp': {
+        const sw = Math.sin(t * 2.2 + seed) * 0.06;
+        c.save(); c.translate(x + CELL / 2, y + CELL); c.rotate(sw);
+        img(c, 'kelp', -CELL / 2, -CELL, CELL, CELL);
+        c.restore();
+        break;
+      }
+      case 'whirl': drawWhirl(c, x, y, cell, t, seed); break;
+      case 'lighthouse':
+        img(c, 'buoy', x, y + Math.sin(t * 2 + seed) * 1.5, CELL, CELL);
+        if (cell.gun) drawLighthouse(c, x, y, t, seed);
+        break;
       case 'grave': img(c, 'grave-block', x, y, CELL, CELL); break;
       case 'sunflower':
         img(c, 'flower-base', x, y, CELL, CELL);
@@ -390,8 +527,14 @@ BOTD.Render = (() => {
       }
     }
     const ratio = cell.hp / cell.maxHp;
-    const noCracks = { shooter: 1, slime: 1, ice: 1, sunflower: 1, grave: 1 };
+    const noCracks = { shooter: 1, slime: 1, ice: 1, sunflower: 1, grave: 1, lily: 1, kelp: 1, whirl: 1, lighthouse: 1 };
     if (ratio < 0.66 && !noCracks[cell.type]) drawCracks(c, x, y, ratio);
+    // Bloque flotando en la piscina: agua por la parte de abajo y ondas
+    if (cell.wet && !NATIVE_WATER[cell.type]) {
+      c.fillStyle = 'rgba(70,180,230,0.45)';
+      c.fillRect(x + 1, y + CELL * 0.74, CELL - 2, CELL * 0.26);
+    }
+    if (cell.wet && cell.type !== 'whirl') ripple(c, x + CELL / 2, y + CELL * 0.8, CELL * 0.8, t, seed);
     if (cell.flash > 0) {
       c.fillStyle = 'rgba(255,255,255,0.45)';
       c.fillRect(x + 2, y + 2, CELL - 4, CELL - 4);
@@ -399,7 +542,9 @@ BOTD.Render = (() => {
   }
 
   // Defensas con cabeza que sobresale: se dibujan en una segunda pasada, por encima del resto
-  const TALL = { shooter: true, ice: true, sunflower: true };
+  const TALL = { shooter: true, ice: true, sunflower: true, lily: true, lighthouse: true };
+  // Defensas que ya se dibujan dentro del agua (no llevan franja de agua encima)
+  const NATIVE_WATER = { lily: true, kelp: true, whirl: true, lighthouse: true };
 
   // Modo daltónico: cada pieza tiene además un patrón de contorno y un símbolo propios
   const KIND_BY_COLOR = {};
@@ -506,14 +651,22 @@ BOTD.Render = (() => {
     digger:  Object.assign({}, BASIC, { head: 'digger-head' }),
     runner:  { head: 'runner-head', torso: 'runner-torso', arm: 'zombie-arm', leg: 'zombie-leg', k: 0.88 },
     boss:    { head: 'boss-head', torso: 'boss-torso', arm: 'boss-arm', leg: 'zombie-leg', k: 1.45 },
-    boss2:   { head: 'boss-head', torso: 'boss-torso', arm: 'boss-arm', leg: 'zombie-leg', k: 1.6, hat: 'crown' }
+    boss2:   { head: 'boss-head', torso: 'boss-torso', arm: 'boss-arm', leg: 'zombie-leg', k: 1.6, hat: 'crown' },
+    swimmer: Object.assign({}, BASIC, { tube: true }),
+    diver:   Object.assign({}, BASIC, { snorkel: true }),
+    seal:    Object.assign({}, BASIC, { seal: true }),
+    finhelm: Object.assign({}, BASIC, { hat: 'helmet' }),
+    captain: { head: 'boss-head', torso: 'boss-torso', arm: 'boss-arm', leg: 'zombie-leg', k: 1.6, hat: 'captain-hat' }
   };
 
   function drawHead(c, P, variant, jawOpen) {
     if (jawOpen > 0) img(c, 'zombie-jaw', -15, -6 + jawOpen * 7, 18, 9, variant);
     img(c, P.head, -16, -32, 32, 32, variant);
     if (P.hat === 'crown') img(c, 'crown', -14, -44, 26, 18, variant);
+    else if (P.hat === 'helmet') img(c, 'helmet', -21, -40, 42, 42, variant);
+    else if (P.hat === 'captain-hat') img(c, 'captain-hat', -19, -48, 38, 23, variant);
     else if (P.hat) img(c, P.hat, -15, -50, 25, 22, variant);
+    if (P.snorkel) img(c, 'snorkel', 6, -46, 13, 24, variant);
   }
 
   // cx/ground en las unidades del contexto actual; o: {noHead, fall, alpha, still, noShadow}
@@ -549,7 +702,8 @@ BOTD.Render = (() => {
     const prev = curS; curS = curS * k;
     if (o.alpha != null) c.globalAlpha = Math.max(0, o.alpha);
 
-    const leg = (hx, ang, v) => { c.save(); c.translate(hx, -27); c.rotate(ang); img(c, P.leg, -6, -2, 12, 30, v); c.restore(); };
+    const leg = (hx, ang, v) => { if (P.seal) return; c.save(); c.translate(hx, -27); c.rotate(ang); img(c, P.leg, -6, -2, 12, 30, v); c.restore(); };
+    if (P.seal) c.translate(0, -12);   // el jinete va sentado sobre la foca
     const arm = (sx, sy, ang, v) => { c.save(); c.translate(sx, sy); c.rotate(ang); img(c, P.arm, -30, -5, 31, 10, v); c.restore(); };
 
     leg(4, -sw * 0.5, back);
@@ -568,6 +722,8 @@ BOTD.Render = (() => {
     arm(-7, -21, (flying ? 1.1 : 0.08) + sw * 0.1 + chomp * 0.25, variant);
     c.restore();
     leg(-3, sw * 0.5, variant);
+    if (P.tube) img(c, 'tube', -22, -40, 44, 19, variant);
+    if (P.seal) img(c, 'seal', -38, -30 + (walking ? Math.sin(ph) * 1.5 : 0), 76, 44, variant);
     // Escudo (puerta) delante del cuerpo mientras aguante
     if (P.shield && z.shield > 0) {
       const sr = z.shield / z.maxShield;
@@ -603,12 +759,44 @@ BOTD.Render = (() => {
     img(c, 'digger-head', cx - 10, ground - 18 + wob, 20, 12);   // asoma el casco
   }
 
+  // Buceador bajo el agua: solo asoma el tubo, con burbujas (y su silueta si un faro lo ilumina)
+  function drawDiving(c, z, lit) {
+    const cx = OX + z.x * CELL;
+    const wl = (z.lane + 1) * CELL - 16;
+    const bob = Math.sin(z.anim * 4) * 2;
+    if (lit) {
+      c.save();
+      c.globalAlpha = 0.35;
+      drawRig(c, z, cx, (z.lane + 1) * CELL + 8, { variant: 'shadow', noShadow: true });
+      c.restore();
+    }
+    img(c, 'snorkel', cx - 4, wl - 30 + bob, 14, 26);
+    c.fillStyle = 'rgba(255,255,255,0.8)';
+    for (let i = 0; i < 3; i++) {
+      c.beginPath(); c.arc(cx + 10 + i * 4, wl - ((z.anim * 25 + i * 8) % 16), 2 + i * 0.5, 0, 7); c.fill();
+    }
+    ripple(c, cx + 2, wl + 2, 26, z.anim, z.lane);
+  }
+
   function drawZombie(c, z) {
     if (z.underground) { drawMound(c, z); return; }
+    const inWater = curWater && curWater.has(z.lane) && !(z.jump > 0);
+    const lit = curLit && curLit.has(z.lane);
+    if (inWater && z.diving) { drawDiving(c, z, lit); return; }
     const k = ZPARTS[z.type].k;
     const cx = OX + z.x * CELL;
     const ground = (z.lane + 1) * CELL - 3;
-    drawRig(c, z, cx, ground);
+    if (inWater) {
+      // En el agua solo se ve de cintura para arriba
+      const wl = ground - (ZPARTS[z.type].seal ? 16 : 23) * k;   // la foca asoma algo más
+      c.save();
+      c.beginPath(); c.rect(cx - CELL * 2, wl - CELL * 4, CELL * 4, CELL * 4); c.clip();
+      drawRig(c, z, cx, ground, { noShadow: true });
+      c.restore();
+      ripple(c, cx, wl, 34 * k, z.anim, z.lane);
+    } else {
+      drawRig(c, z, cx, ground);
+    }
     if (z.slow > 0) {
       c.fillStyle = 'rgba(170,90,230,0.75)';
       c.beginPath(); c.ellipse(cx, ground, 15 * k, 4 * k, 0, 0, 7); c.fill();
@@ -619,7 +807,7 @@ BOTD.Render = (() => {
     if (z.hp < z.maxHp) {
       const w = k > 1 ? 64 : 34;
       const r = Math.max(0, z.hp / z.maxHp);
-      const hatted = z.type === 'cone' || z.type === 'bucket' || z.type === 'boss2';
+      const hatted = z.type === 'cone' || z.type === 'bucket' || z.type === 'boss2' || z.type === 'finhelm' || z.type === 'captain';
       const by = ground - (hatted ? 102 : 88) * k - (z.balloon ? CELL * 0.55 : 0);
       c.fillStyle = INK;
       c.beginPath(); c.roundRect(cx - w / 2 - 2, by - 2, w + 4, 8, 4); c.fill();
@@ -637,6 +825,14 @@ BOTD.Render = (() => {
     const grd = c.createLinearGradient(x0 - CELL, 0, x0 + CELL * 0.6, 0);
     grd.addColorStop(0, 'rgba(200,190,230,0)');
     grd.addColorStop(1, 'rgba(200,190,230,0.9)');
+    // Los carriles iluminados por un faro quedan sin niebla
+    const lit = g.lit && g.lit.size ? g.lit : null;
+    c.save();
+    if (lit) {
+      c.beginPath();
+      for (let r = C.HIDDEN_ROWS; r < H; r++) if (!lit.has(r)) c.rect(x0 - CELL, r * CELL, LW - x0 + CELL, CELL);
+      c.clip();
+    }
     c.fillStyle = grd;
     c.fillRect(x0 - CELL, top, LW - x0 + CELL, bottom - top);
     // Volutas que se mueven
@@ -646,16 +842,22 @@ BOTD.Render = (() => {
       const fy = top + ((i * 97) % (C.ROWS * CELL)) + Math.sin(t + i) * 10;
       c.beginPath(); c.ellipse(fx, fy, 40, 18, 0, 0, 7); c.fill();
     }
+    c.restore();
+    if (lit) {
+      c.fillStyle = 'rgba(255,240,150,0.08)';
+      lit.forEach(r => { if (r >= C.HIDDEN_ROWS && r < H) c.fillRect(x0 - CELL, r * CELL, LW - x0 + CELL, CELL); });
+    }
   }
 
   /* ---------- Rodillos de jardín ---------- */
   function drawRoller(c, x, lane, t, moving) {
     const w = 42, h = 34;
+    const wet = curWater && curWater.has(lane);
     const px = OX + x * CELL - w / 2;
     const py = (lane + 1) * CELL - h - 2 + (moving ? Math.sin(t * 40) * 1.2 : 0);
     c.fillStyle = 'rgba(0,0,0,0.25)';
     c.beginPath(); c.ellipse(px + w * 0.55, (lane + 1) * CELL - 2, w * 0.42, 4, 0, 0, 7); c.fill();
-    img(c, 'roller', px, py, w, h);
+    img(c, wet ? 'pool-cleaner' : 'roller', px, py, w, h);
   }
 
   function drawRollers(c, g, t) {
@@ -729,6 +931,8 @@ BOTD.Render = (() => {
       const m = g.shake * 14;
       c.translate((Math.random() - 0.5) * m, (Math.random() - 0.5) * m);
     }
+    curWater = g.water || null;
+    curLit = g.lit || null;
     ambientFx(c, g.level.ambient, t);
 
     if (g.houseFlash > 0) {
@@ -899,6 +1103,7 @@ BOTD.Render = (() => {
     const c = ctx;
     curS = S;
     c.setTransform(1, 0, 0, 1, 0, 0);
+    curWater = curLit = null;
     c.drawImage(background('day', C.ROWS), 0, 0);
     c.setTransform(S, 0, 0, S, 0, -VIEW_TOP * S);
     ambientFx(c, 'day', idleT);
@@ -943,6 +1148,7 @@ BOTD.Render = (() => {
   function drawIcon(canvas, kind, type, silhouette) {
     const c = prepCanvas(canvas);
     const prev = curS;
+    curWater = curLit = null;
     if (kind === 'defense') {
       const sc = canvas.width / (CELL * 1.25);
       c.setTransform(sc, 0, 0, sc, canvas.width * 0.1, canvas.height * 0.16);
@@ -952,7 +1158,7 @@ BOTD.Render = (() => {
       const P = ZPARTS[type];
       const d = C.ZOMBIES[type];
       const k = P.k;
-      const tall = P.balloon ? 150 : P.hat ? 108 : 95;
+      const tall = P.balloon ? 150 : P.hat ? 108 : P.seal ? 104 : 95;
       const sc = canvas.height / (tall * k);
       c.setTransform(sc, 0, 0, sc, 0, 0);
       curS = sc;

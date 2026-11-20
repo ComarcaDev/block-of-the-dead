@@ -23,5 +23,9 @@ self.BOTD_PRECACHE = [
   'assets/svg/dirt.svg', 'assets/svg/roller.svg', 'assets/svg/ice-base.svg', 'assets/svg/ice-head.svg',
   'assets/svg/ice-pea.svg', 'assets/svg/cactus.svg', 'assets/svg/flower-base.svg', 'assets/svg/sunflower.svg',
   'assets/svg/grave-block.svg', 'assets/svg/bucket.svg', 'assets/svg/shield.svg', 'assets/svg/digger-head.svg',
-  'assets/svg/balloon.svg', 'assets/svg/crown.svg'
+  'assets/svg/balloon.svg', 'assets/svg/crown.svg',
+  // Mundo 3: la piscina
+  'assets/svg/lilypad.svg', 'assets/svg/kelp.svg', 'assets/svg/buoy.svg', 'assets/svg/lighthouse.svg',
+  'assets/svg/tube.svg', 'assets/svg/snorkel.svg', 'assets/svg/seal.svg', 'assets/svg/helmet.svg',
+  'assets/svg/captain-hat.svg', 'assets/svg/pool-cleaner.svg'
 ];
